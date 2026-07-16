@@ -20,7 +20,7 @@ export const RELATIONSHIP_START = "2025-09-17T00:00:00Z";
  */
 export const NAV_ITEMS = [
   { id: "home", label: "Home", path: "/home" },
-  { id: "our-story", label: "Story", path: "/our-story" },
+  { id: "story", label: "Story", path: "/our-story" },
   { id: "memories", label: "Memories", path: "/memories" },
   { id: "why-i-love-you", label: "Why I Love You", path: "/why-i-love-you" },
   { id: "ten-months", label: "Ten Months", path: "/ten-months" },
