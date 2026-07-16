@@ -1,0 +1,171 @@
+{
+  "project_info": {
+    "name": "AYESHA'S PRIVATE UNIVERSE",
+    "type": "hybrid_fullstack_private_app",
+    "description": "A private, intimate, cinematic web application built for an anniversary. Fuses luxury fashion editorial, Apple-style scroll, tactile archive, and a hidden emotional universe."
+  },
+  "theme_strategy": {
+    "primary_mode": "dark",
+    "description": "The app defaults to Archive Black to create a private, cinematic theater room feel. Romantic and Editorial sections selectively inverse to warm ivory to create emotional contrast."
+  },
+  "colors": {
+    "global_tokens": {
+      "archive_black": "#0B0B0F",
+      "kuromi_purple": "#8B5CF6",
+      "lavender": "#B89CFF",
+      "bow_pink": "#F3A7C4",
+      "romantic_ivory": "#F8F0E7",
+      "tulip_cream": "#FFF0F3",
+      "detective_grey_1": "#1C1C21",
+      "detective_grey_2": "#2A2A35"
+    },
+    "modes": {
+      "dashboard": {
+        "background": "#0B0B0F",
+        "surface": "#1C1C21",
+        "border": "#2A2A35",
+        "text_primary": "#F8F0E7",
+        "accent": "#8B5CF6"
+      },
+      "editorial_ayesha": {
+        "background": "#0B0B0F",
+        "text_primary": "#F8F0E7",
+        "accent": "#F3A7C4"
+      },
+      "romantic_us": {
+        "background": "#F8F0E7",
+        "surface": "#FFF0F3",
+        "text_primary": "#0B0B0F",
+        "accent": "#8B5CF6"
+      },
+      "case_1709": {
+        "background": "#050508",
+        "surface": "#101018",
+        "text_primary": "#A0A0B0",
+        "accent": "#8B5CF6"
+      }
+    }
+  },
+  "typography": {
+    "font_families": {
+      "ui_sans": "Manrope",
+      "editorial_serif": "Bodoni Moda",
+      "handwritten": "Caveat",
+      "monospace": "JetBrains Mono"
+    },
+    "pairing_rules": {
+      "headings_editorial": "Bodoni Moda, font-light to font-normal, tracking-tighter.",
+      "ui_elements": "Manrope, font-medium, tracking-tight.",
+      "intimate_notes": "Caveat, text-2xl to text-4xl, slightly rotated.",
+      "metadata_timestamps": "JetBrains Mono, text-xs, uppercase, tracking-[0.2em]."
+    },
+    "scale_hierarchy": {
+      "h1": "text-5xl sm:text-6xl+ (Clamp max 80px)",
+      "h2": "text-4xl sm:text-5xl",
+      "h3": "text-2xl sm:text-3xl",
+      "body": "text-base sm:text-lg",
+      "labels": "text-xs tracking-[0.2em] uppercase"
+    }
+  },
+  "grids_and_layouts": {
+    "dashboard_bento": {
+      "type": "Asymmetric Bento Grid",
+      "structure": "grid-cols-1 md:grid-cols-12 gap-6",
+      "items": [
+        "CASE 1709: col-span-12 md:col-span-8 row-span-2 (Dark, forensic)",
+        "Ayesha Portrait: col-span-12 md:col-span-4 row-span-3 (Tall, elegant)",
+        "Our Story: col-span-12 md:col-span-8 row-span-1 (Wide, cinematic)",
+        "Wreck Room: col-span-6 md:col-span-4 row-span-1",
+        "Safe Space: col-span-6 md:col-span-4 row-span-1"
+      ]
+    },
+    "our_story_scroll": {
+      "type": "Cinematic Apple-style Scroll",
+      "structure": "100vh sections with sticky positioning. Images pin while text scrolls over them. High use of negative space."
+    },
+    "why_i_love_you_editorial": {
+      "type": "Fashion Editorial",
+      "structure": "Left column sticky huge Bodoni headings. Right column floating paragraphs with Caveat annotations."
+    },
+    "memory_vault": {
+      "type": "Tactile Archive",
+      "structure": "Dense grid with monospace metadata. Looks like a forensic evidence board mixed with a polaroid album."
+    }
+  },
+  "motion_and_interactions": {
+    "global_cursor": {
+      "behavior": "Custom cursor masking default. On desktop, generates a max 8-particle lavender (#B89CFF) trail. Particles fade and scale down over 600ms."
+    },
+    "magnetic_buttons": {
+      "behavior": "Buttons subtly pull towards cursor (max 8px translation) on hover using spring physics."
+    },
+    "scroll_animations": {
+      "libraries": ["Lenis", "Framer Motion", "GSAP ScrollTrigger"],
+      "behavior": "Momentum scrolling. Elements reveal via mask-image sweeps (up/down) rather than simple opacity fades."
+    },
+    "hidden_scroll_system": {
+      "behavior": "Long press (3 seconds) on the September 17 memory triggers a circular SVG progress ring. Unlocks /ten-months."
+    }
+  },
+  "mascot_design_brief": {
+    "concept": "Original mischievous skull-and-bow character.",
+    "visuals": "Sleek, minimalist vector shape. Deep purple (#8B5CF6) and soft pink (#F3A7C4). Subtle floating animation (translateY). Acts as a guide/easter egg throughout the UI."
+  },
+  "visual_enhancers": {
+    "textures": "Subtle film grain overlay (opacity 3-5%) on dark sections to remove digital flatness.",
+    "glassmorphism": "Used for password gateway and floating navs: bg-archive_black/60, backdrop-blur-xl, border-white/10.",
+    "shadows": "Minimal drop shadows. Rely on 1px borders and inner glows for depth."
+  },
+  "media_and_images": {
+    "strategy": "No generic stock couples. Use atmospheric, abstract mood imagery. All personal photos act as polished placeholder cards with asset IDs.",
+    "placeholder_design": "Dark surface (#1C1C21), subtle border (#2A2A35), centered JetBrains Mono text (e.g., 'ASSET_ID: 1709-A'), aspect ratio maintained.",
+    "image_urls": [
+      {
+        "category": "Floating Tulips / Silk",
+        "url": "https://images.unsplash.com/photo-1637750586228-179a1a7aef84?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NTYxOTF8MHwxfHNlYXJjaHwxfHxmbG9hdGluZyUyMGZhYnJpYyUyMHNpbGslMjBkYXJrfGVufDB8fHx8MTc4MzYzMTI5Mnww&ixlib=rb-4.1.0&q=85",
+        "description": "Black shiny silk fabric, perfect for CASE 1709 hero or dark editorial backgrounds."
+      },
+      {
+        "category": "Cinematic City Lights",
+        "url": "https://images.unsplash.com/photo-1601042879364-f3947d3f9c16?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NDh8MHwxfHNlYXJjaHwxfHxjaW5lbWF0aWMlMjBuaWdodCUyMGNpdHklMjBsaWdodHMlMjBibHVyfGVufDB8fHx8MTc4NDIzMDU2OXww&ixlib=rb-4.1.0&q=85",
+        "description": "Rainy neon city streets. Use for 'Our Story' transition backgrounds."
+      },
+      {
+        "category": "Abstract Lavender Mood",
+        "url": "https://images.unsplash.com/photo-1608501712351-a4ca8dc996fb?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NTYxNzV8MHwxfHNlYXJjaHwyfHxhYnN0cmFjdCUyMGxhdmVuZGVyJTIwbW9vZCUyMGFlc3RoZXRpY3xlbnwwfHx8fDE3ODQyMzA1Njl8MA&ixlib=rb-4.1.0&q=85",
+        "description": "Purple liquid/water texture. Great for romantic/soft sections."
+      },
+      {
+        "category": "Film Grain Particle",
+        "url": "https://images.unsplash.com/photo-1563089145-599997674d42?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA2MDV8MHwxfHNlYXJjaHwyfHxhYnN0cmFjdCUyMGRhcmslMjBwdXJwbGUlMjBmaWxtJTIwZ3JhaW4lMjB0ZXh0dXJlfGVufDB8fHx8MTc4NDIzMDU2OXww&ixlib=rb-4.1.0&q=85",
+        "description": "Neon pink and purple light particles. Good for magical realism accents."
+      }
+    ]
+  },
+  "component_usage_rules": {
+    "buttons": "Pill-shaped or sharp rectangles. NO generic standard radius. Primary buttons use kuromi-purple or romantic-ivory depending on theme.",
+    "cards": "Cardless or 1px border. Do not use heavy drop shadows. Internal padding p-6 or p-8.",
+    "forms": "Minimalist inputs. 1px bottom border only, or heavy glassmorphism for password gateway."
+  },
+  "accessibility_and_testing": {
+    "contrast": "Ensure text against dark backgrounds meets APCA standards.",
+    "data_testid": "ALL interactive elements (buttons, links, form inputs, memory cards, gateway submit) MUST include a data-testid attribute for automated testing. Format: kebab-case, role-based."
+  },
+  "instructions_to_main_agent": {
+    "1": "DO NOT build a generic SaaS dashboard. This is a cinematic private app.",
+    "2": "Apply custom cursor logic ONLY for desktop viewports.",
+    "3": "Use native Framer Motion or GSAP for the cinematic scrolling sections.",
+    "4": "Implement the hidden scroll trigger carefully with a touch/mouse down timer.",
+    "5": "Do not center-align text globally. Use deliberate asymmetrical compositions."
+  },
+  "UNIVERSAL_GUIDELINES_FOR_MAIN_AGENT": [
+    "You tend to converge toward generic, 'on distribution' outputs. Avoid the 'AI slop' aesthetic.",
+    "Dark colors look good when used independently without gradients. DO NOT use dark colors as gradients.",
+    "Create depth through layered design elements with z-index hierarchy and glassmorphism (12-24px blur).",
+    "DO NOT apply universal transitions (e.g., transition: all) as it breaks transforms.",
+    "DO NOT center align the app container (.App { text-align: center; }).",
+    "Use 2-3x more spacing than feels comfortable. Cramped designs look cheap.",
+    "NEVER use AI assistant emojis for icons. Use Radix/Phosphor icons.",
+    "All interactive and key informational elements MUST include a data-testid attribute."
+  ]
+}
