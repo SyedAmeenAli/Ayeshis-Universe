@@ -1,0 +1,11 @@
+{
+  "short_name": "Ayeshi",
+  "name": "Ayesha's Private Universe",
+  "description": "Private Archive 1709 — a world made for one person.",
+  "icons": [],
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#0B0B0F",
+  "background_color": "#0B0B0F"
+}

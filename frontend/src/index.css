@@ -2,114 +2,252 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ---------------------------------------------------------------------------
+   AYESHA'S PRIVATE UNIVERSE — global design tokens
+   -------------------------------------------------------------------------*/
+:root {
+  /* Archive palette */
+  --archive-black: #0b0b0f;
+  --archive-black-soft: #0e0e13;
+  --surface-01: #141419;
+  --surface-02: #1a1a21;
+  --surface-03: #22222b;
+  --surface-04: #2c2c37;
+
+  --text-primary: #f7f4f6;
+  --text-secondary: #b7b1ba;
+  --text-muted: #7f7885;
+  --text-disabled: #56515b;
+
+  --kuromi-purple: #8b5cf6;
+  --lavender: #b89cff;
+  --lavender-soft: #d1c2ff;
+  --bow-pink: #f3a7c4;
+  --tulip-cream: #fff0f3;
+  --romantic-ivory: #f8f0e7;
+
+  --danger-red: #ff405c;
+  --success-mint: #7ce2be;
+  --warning-gold: #e6bd6a;
+
+  --detective-steel: #74808d;
+  --detective-blue: #61a8ff;
+
+  /* Shadcn compatibility — dark by default */
+  --background: 240 10% 5%;
+  --foreground: 320 15% 96%;
+  --card: 240 8% 10%;
+  --card-foreground: 320 15% 96%;
+  --popover: 240 8% 10%;
+  --popover-foreground: 320 15% 96%;
+  --primary: 258 90% 66%;
+  --primary-foreground: 320 15% 96%;
+  --secondary: 240 6% 15%;
+  --secondary-foreground: 320 15% 96%;
+  --muted: 240 6% 15%;
+  --muted-foreground: 320 5% 65%;
+  --accent: 258 60% 55%;
+  --accent-foreground: 320 15% 96%;
+  --destructive: 350 90% 62%;
+  --destructive-foreground: 320 15% 96%;
+  --border: 240 6% 18%;
+  --input: 240 6% 15%;
+  --ring: 258 90% 66%;
+  --radius: 0.75rem;
+
+  /* Typography families */
+  --font-ui: "Manrope", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-editorial: "Bodoni Moda", "Cormorant Garamond", "Times New Roman", serif;
+  --font-hand: "Caveat", cursive;
+  --font-mono: "JetBrains Mono", "IBM Plex Mono", ui-monospace, monospace;
+}
+
+/* Global reset */
+html,
+body,
+#root {
+  background: var(--archive-black);
+  color: var(--text-primary);
+  font-family: var(--font-ui);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  min-height: 100%;
+}
+
 body {
-    margin: 0;
-    font-family:
-        -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen",
-        "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
-        sans-serif;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
+  margin: 0;
+  /* Never center-align globally */
+  text-align: left;
+  overflow-x: hidden;
 }
 
-code {
-    font-family:
-        source-code-pro, Menlo, Monaco, Consolas, "Courier New", monospace;
+::selection {
+  background: rgba(139, 92, 246, 0.4);
+  color: #fff;
 }
 
+/* Scrollbar */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: var(--archive-black); }
+::-webkit-scrollbar-thumb { background: var(--surface-03); border-radius: 999px; }
+::-webkit-scrollbar-thumb:hover { background: var(--surface-04); }
+
+/* Custom cursor — desktop only */
+@media (hover: hover) and (pointer: fine) {
+  html.apu-cursor-enabled,
+  html.apu-cursor-enabled * {
+    cursor: none !important;
+  }
+}
+
+.apu-cursor {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--lavender);
+  pointer-events: none;
+  z-index: 100000;
+  mix-blend-mode: normal;
+  transform: translate3d(-100px, -100px, 0);
+  transition:
+    width 220ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    height 220ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    background 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.apu-cursor[data-variant="interactive"] {
+  width: 38px;
+  height: 38px;
+  background: rgba(184, 156, 255, 0.14);
+  border: 1px solid rgba(184, 156, 255, 0.55);
+}
+.apu-cursor[data-variant="view"],
+.apu-cursor[data-variant="open"],
+.apu-cursor[data-variant="drag"] {
+  width: 62px;
+  height: 62px;
+  background: rgba(184, 156, 255, 0.18);
+  border: 1px solid rgba(184, 156, 255, 0.5);
+  color: var(--lavender-soft);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.24em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-transform: uppercase;
+}
+
+.apu-cursor__trail {
+  position: fixed;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(184, 156, 255, 0.65);
+  pointer-events: none;
+  z-index: 99999;
+}
+
+/* Film grain layer */
+.apu-grain::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml;utf8,<svg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' seed='7'/><feColorMatrix values='0 0 0 0 0.72 0 0 0 0 0.66 0 0 0 0 0.78 0 0 0 0.12 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  opacity: 0.35;
+  mix-blend-mode: overlay;
+  z-index: 5;
+}
+
+/* Type utilities */
+.type-editorial { font-family: var(--font-editorial); font-weight: 500; letter-spacing: -0.03em; }
+.type-hand      { font-family: var(--font-hand); letter-spacing: 0; }
+.type-mono      { font-family: var(--font-mono); letter-spacing: 0.14em; text-transform: uppercase; font-size: 0.72rem; }
+.type-ui        { font-family: var(--font-ui); }
+
+/* Editorial page invert (light theme surface for romantic sections) */
+.mode-romantic {
+  background: var(--romantic-ivory);
+  color: #1a1a21;
+}
+.mode-romantic .type-mono { color: #4d4750; }
+
+/* Micro helpers */
+.hairline { border-color: rgba(247, 244, 246, 0.08); }
+.hairline-strong { border-color: rgba(247, 244, 246, 0.16); }
+.text-shadow-cinema {
+  text-shadow: 0 2px 22px rgba(0, 0, 0, 0.55);
+}
+
+/* Magnetic base */
+.magnetic { will-change: transform; transition: transform 120ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+
+/* Placeholders */
+.apu-placeholder {
+  position: relative;
+  background: linear-gradient(140deg, var(--surface-02) 0%, var(--surface-01) 100%);
+  border: 1px solid rgba(184, 156, 255, 0.14);
+  border-radius: 18px;
+  overflow: hidden;
+  color: var(--text-muted);
+}
+.apu-placeholder::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 20% 15%, rgba(184, 156, 255, 0.09), transparent 45%),
+    radial-gradient(circle at 80% 85%, rgba(243, 167, 196, 0.06), transparent 55%);
+  pointer-events: none;
+}
+
+/* Long-press ring progress */
+.apu-ring-track { stroke: rgba(184, 156, 255, 0.15); }
+.apu-ring-fill { stroke: var(--lavender); transition: stroke-dashoffset 60ms linear; }
+
+/* Ink clue reveal */
+@keyframes ink-bloom {
+  0% { opacity: 0; transform: scale(0.6); filter: blur(4px); }
+  40% { opacity: 0.85; filter: blur(0); }
+  100% { opacity: 0.75; transform: scale(1); }
+}
+.apu-ink-clue { animation: ink-bloom 900ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+/* Skeleton for asset placeholders */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.apu-shimmer {
+  background: linear-gradient(100deg, rgba(184, 156, 255, 0.04) 0%, rgba(184, 156, 255, 0.14) 45%, rgba(184, 156, 255, 0.04) 90%);
+  background-size: 200% 100%;
+  animation: shimmer 3.6s linear infinite;
+}
+
+/* Slow float for mascot etc. */
+@keyframes gentle-float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-6px); }
+}
+.gentle-float { animation: gentle-float 5s ease-in-out infinite; }
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Shadcn base */
 @layer base {
-    :root {
-        --background: 0 0% 100%;
-        --foreground: 0 0% 3.9%;
-        --card: 0 0% 100%;
-        --card-foreground: 0 0% 3.9%;
-        --popover: 0 0% 100%;
-        --popover-foreground: 0 0% 3.9%;
-        --primary: 0 0% 9%;
-        --primary-foreground: 0 0% 98%;
-        --secondary: 0 0% 96.1%;
-        --secondary-foreground: 0 0% 9%;
-        --muted: 0 0% 96.1%;
-        --muted-foreground: 0 0% 45.1%;
-        --accent: 0 0% 96.1%;
-        --accent-foreground: 0 0% 9%;
-        --destructive: 0 84.2% 60.2%;
-        --destructive-foreground: 0 0% 98%;
-        --border: 0 0% 89.8%;
-        --input: 0 0% 89.8%;
-        --ring: 0 0% 3.9%;
-        --chart-1: 12 76% 61%;
-        --chart-2: 173 58% 39%;
-        --chart-3: 197 37% 24%;
-        --chart-4: 43 74% 66%;
-        --chart-5: 27 87% 67%;
-        --radius: 0.5rem;
-    }
-    .dark {
-        --background: 0 0% 3.9%;
-        --foreground: 0 0% 98%;
-        --card: 0 0% 3.9%;
-        --card-foreground: 0 0% 98%;
-        --popover: 0 0% 3.9%;
-        --popover-foreground: 0 0% 98%;
-        --primary: 0 0% 98%;
-        --primary-foreground: 0 0% 9%;
-        --secondary: 0 0% 14.9%;
-        --secondary-foreground: 0 0% 98%;
-        --muted: 0 0% 14.9%;
-        --muted-foreground: 0 0% 63.9%;
-        --accent: 0 0% 14.9%;
-        --accent-foreground: 0 0% 98%;
-        --destructive: 0 62.8% 30.6%;
-        --destructive-foreground: 0 0% 98%;
-        --border: 0 0% 14.9%;
-        --input: 0 0% 14.9%;
-        --ring: 0 0% 83.1%;
-        --chart-1: 220 70% 50%;
-        --chart-2: 160 60% 45%;
-        --chart-3: 30 80% 55%;
-        --chart-4: 280 65% 60%;
-        --chart-5: 340 75% 55%;
-    }
-}
-
-@layer base {
-    * {
-        @apply border-border;
-    }
-    body {
-        @apply bg-background text-foreground;
-    }
-}
-
-@layer base {
-    [data-debug-wrapper="true"] {
-        display: contents !important;
-    }
-
-    [data-debug-wrapper="true"] > * {
-        margin-left: inherit;
-        margin-right: inherit;
-        margin-top: inherit;
-        margin-bottom: inherit;
-        padding-left: inherit;
-        padding-right: inherit;
-        padding-top: inherit;
-        padding-bottom: inherit;
-        column-gap: inherit;
-        row-gap: inherit;
-        gap: inherit;
-        border-left-width: inherit;
-        border-right-width: inherit;
-        border-top-width: inherit;
-        border-bottom-width: inherit;
-        border-left-style: inherit;
-        border-right-style: inherit;
-        border-top-style: inherit;
-        border-bottom-style: inherit;
-        border-left-color: inherit;
-        border-right-color: inherit;
-        border-top-color: inherit;
-        border-bottom-color: inherit;
-    }
+  * { @apply border-border; }
+  body { @apply bg-background text-foreground; }
 }

@@ -1,54 +1,60 @@
 import { useEffect } from "react";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import "@/App.css";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import axios from "axios";
-import { HOME } from "@/constants/testIds";
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
-
-const Home = () => {
-  const helloWorldApi = async () => {
-    try {
-      const response = await axios.get(`${API}/`);
-      console.log(response.data.message);
-    } catch (e) {
-      console.error(e, `errored out requesting / api`);
-    }
-  };
-
-  useEffect(() => {
-    helloWorldApi();
-  }, []);
-
-  return (
-    <div>
-      <header className="App-header">
-        <a
-          data-testid={HOME.emergentLink}
-          className="App-link"
-          href="https://emergent.sh"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <img src="https://avatars.githubusercontent.com/in/1201222?s=120&u=2686cf91179bbafbc7a71bfbc43004cf9ae1acea&v=4" />
-        </a>
-        <p className="mt-5">Building something incredible ~!</p>
-      </header>
-    </div>
-  );
-};
+import BootScreen from "@/pages/Boot";
+import Gateway from "@/pages/Gateway";
+import Home from "@/pages/Home";
+import OurStory from "@/pages/OurStory";
+import WhyILoveYou from "@/pages/WhyILoveYou";
+import Memories from "@/pages/Memories";
+import MemoryDetail from "@/pages/MemoryDetail";
+import TenMonths from "@/pages/TenMonths";
+import Archived from "@/pages/Archived";
+import { AppShell } from "@/components/shell/AppShell";
+import { ProtectedRoute } from "@/components/shell/ProtectedRoute";
+import { useSession } from "@/stores/sessionStore";
+import { Toaster } from "@/components/ui/sonner";
 
 function App() {
+  const check = useSession((s) => s.check);
+  useEffect(() => {
+    check();
+  }, [check]);
+
   return (
     <div className="App">
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Home />}>
-            <Route index element={<Home />} />
+          <Route path="/" element={<BootScreen />} />
+          <Route path="/gateway" element={<Gateway />} />
+          <Route
+            element={
+              <ProtectedRoute>
+                <AppShell />
+              </ProtectedRoute>
+            }
+          >
+            <Route path="/home" element={<Home />} />
+            <Route path="/our-story" element={<OurStory />} />
+            <Route path="/why-i-love-you" element={<WhyILoveYou />} />
+            <Route path="/memories" element={<Memories />} />
+            <Route path="/memories/:slug" element={<MemoryDetail />} />
+            <Route path="/ten-months" element={<TenMonths />} />
+            <Route path="/ayesha" element={<Archived title="Ayesha" subtitle="A luxury editorial, being arranged." />} />
+            <Route path="/ameen" element={<Archived title="Ameen" subtitle="Unfortunately, the boyfriend also exists — his corner is coming." />} />
+            <Route path="/our-song" element={<Archived title="Our Song" subtitle="The listening room is being tuned." />} />
+            <Route path="/safe-space" element={<Archived title="Safe Space" subtitle="Your private diary room. Being furnished quietly." />} />
+            <Route path="/calendar" element={<Archived title="Our Calendar" subtitle="Booking Ameen — the calendar is being wired." />} />
+            <Route path="/wreck-room" element={<Archived title="Wreck Room" subtitle="Currently under professional destruction." />} />
+            <Route path="/games" element={<Archived title="Playground" subtitle="Six games are being built — one detective, five smaller." />} />
+            <Route path="/games/:gameId" element={<Archived title="Game" subtitle="This game is being finished. Save your dignity." />} />
+            <Route path="/settings" element={<Archived title="Settings" subtitle="Motion, audio and privacy preferences — soon." />} />
           </Route>
+          <Route path="*" element={<Navigate to="/home" replace />} />
         </Routes>
       </BrowserRouter>
+      <Toaster position="top-center" richColors />
     </div>
   );
 }
