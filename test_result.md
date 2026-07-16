@@ -360,3 +360,79 @@ agent_communication:
       7. Story reading position: scroll to a mid section, refresh /our-story — should restore.
 
       Credentials: /app/memory/test_credentials.md. No username needed — just the date.
+
+# ---- ITERATION 2 · GAMES SPRINT ----
+
+backend_v2:
+  - task: "Games API — save/start/complete/restart/stats/achievements/quiz/evidence"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    needs_retesting: true
+    notes: |
+      Endpoints: GET /api/games, /api/games/stats, /api/games/{key}/save (GET/PUT),
+      /api/games/{key}/start, /api/games/{key}/complete, /api/games/{key}/restart,
+      /api/games/achievements, /api/games/achievements/unlock,
+      /api/games/quiz/questions (seeded with 10 questions), /api/games/case-1709/content,
+      /api/games/case-1709/evidence/{evidence_key}. Rejects invalid game_key (400) and
+      oversized state (413). Awards achievements automatically on completion. Unique indexes.
+
+frontend_v2:
+  - task: "Games Library — asymmetric arcade with per-game preview + saved progress"
+    file: "/app/frontend/src/pages/games/GamesLibrary.jsx"
+    working: true
+    needs_retesting: true
+  - task: "Us, But Broken (Jigsaw) — 3 difficulties, SVG pieces, snap, keyboard, autosave"
+    file: "/app/frontend/src/pages/games/Jigsaw.jsx"
+    working: true
+    needs_retesting: true
+  - task: "Relationship Timeline — DnD Kit reorder, 3 modes, hints, submission scoring"
+    file: "/app/frontend/src/pages/games/Timeline.jsx"
+    working: true
+    needs_retesting: true
+  - task: "How Well Do You Know Baby Boy? — animated quiz, 3 modes, keyboard 1-4, reactions"
+    file: "/app/frontend/src/pages/games/AmeenQuiz.jsx"
+    working: true
+    needs_retesting: true
+  - task: "Sushi Stack — Matter.js physics, drop mechanics, collapse detection"
+    file: "/app/frontend/src/pages/games/SushiStack.jsx"
+    working: true
+    needs_retesting: true
+  - task: "Find Chota Koko — normalized coord hidden objects, hints, 3 modes"
+    file: "/app/frontend/src/pages/games/FindKoko.jsx"
+    working: true
+    needs_retesting: true
+  - task: "Wreck Room — Konva canvas, throw mechanics, comic bubbles, damage, revive"
+    file: "/app/frontend/src/pages/WreckRoom.jsx"
+    working: true
+    needs_retesting: true
+  - task: "CASE 1709 — full phone OS + 5 acts + evidence board + terminal + hints"
+    file: "/app/frontend/src/pages/games/Case1709.jsx, /app/frontend/src/components/case1709/PhoneOS.jsx"
+    working: true
+    needs_retesting: true
+
+metadata_v2:
+  test_sequence: 2
+
+agent_communication_v2:
+  - agent: main
+    message: |
+      Games sprint complete. All 6 games plus Wreck Room implemented as real playable experiences
+      with backend persistence, autosave, restart confirmation, completion screens with tailored
+      achievements, and proper responsive controls (mouse + touch + keyboard where relevant).
+      Please test end-to-end across all games. Focus areas:
+      * Jigsaw: piece dragging, snap detection at Cute Baby difficulty, save persistence
+      * Timeline: DnD reorder, submission validation, 80% pass threshold
+      * Quiz: 10-question flow, keyboard 1-4, reactions, score computation, best-score persistence
+      * Sushi Stack: canvas physics, drop-on-click, collapse detection, best score
+      * Find Koko: normalized-coord hits, hint pulses, 12/12 completion
+      * Wreck Room: draw + throw + damage bar + KO + revive + comic bubbles
+      * CASE 1709: opening flow, phone icons open apps, terminal accepts commands,
+        Act I firewall (kiss date 111025), pungun binary decode, hathim password 'potty' +
+        inspecting 3 contradictions, notification chronology → CRAVERY.
+        Act II CCTV order, lift floor 4, spectrogram rotate180 + invert, receipt N-O-R-TH.
+        Act III toxidrome (organophosphate + 3 symptoms), cabinet code 0029, willis mapping,
+        cranial CN III, mechanism grid.
+        Act IV vehicle v2, remove checkpoint D, packet base64 → date 121225, steg blue+invert.
+        Act V four cabinets, contradiction classifier, identity=synthetic, terminal free-text
+        then 'hum toh aise hi hai' → containment open.

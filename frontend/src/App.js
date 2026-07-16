@@ -11,6 +11,14 @@ import Memories from "@/pages/Memories";
 import MemoryDetail from "@/pages/MemoryDetail";
 import TenMonths from "@/pages/TenMonths";
 import Archived from "@/pages/Archived";
+import WreckRoom from "@/pages/WreckRoom";
+import GamesLibrary from "@/pages/games/GamesLibrary";
+import Jigsaw from "@/pages/games/Jigsaw";
+import Timeline from "@/pages/games/Timeline";
+import AmeenQuiz from "@/pages/games/AmeenQuiz";
+import SushiStack from "@/pages/games/SushiStack";
+import FindKoko from "@/pages/games/FindKoko";
+import Case1709 from "@/pages/games/Case1709";
 import { AppShell } from "@/components/shell/AppShell";
 import { ProtectedRoute } from "@/components/shell/ProtectedRoute";
 import { useSession } from "@/stores/sessionStore";
@@ -46,9 +54,14 @@ function App() {
             <Route path="/our-song" element={<Archived title="Our Song" subtitle="The listening room is being tuned." />} />
             <Route path="/safe-space" element={<Archived title="Safe Space" subtitle="Your private diary room. Being furnished quietly." />} />
             <Route path="/calendar" element={<Archived title="Our Calendar" subtitle="Booking Ameen — the calendar is being wired." />} />
-            <Route path="/wreck-room" element={<Archived title="Wreck Room" subtitle="Currently under professional destruction." />} />
-            <Route path="/games" element={<Archived title="Playground" subtitle="Six games are being built — one detective, five smaller." />} />
-            <Route path="/games/:gameId" element={<Archived title="Game" subtitle="This game is being finished. Save your dignity." />} />
+            <Route path="/wreck-room" element={<WreckRoom />} />
+            <Route path="/games" element={<GamesLibrary />} />
+            <Route path="/games/case-1709" element={<Case1709 />} />
+            <Route path="/games/jigsaw" element={<Jigsaw />} />
+            <Route path="/games/timeline" element={<Timeline />} />
+            <Route path="/games/ameen-quiz" element={<AmeenQuiz />} />
+            <Route path="/games/sushi-stack" element={<SushiStack />} />
+            <Route path="/games/find-koko" element={<FindKoko />} />
             <Route path="/settings" element={<Archived title="Settings" subtitle="Motion, audio and privacy preferences — soon." />} />
           </Route>
           <Route path="*" element={<Navigate to="/home" replace />} />

@@ -1,0 +1,38 @@
+{
+  "summary": "Games sprint testing — 14/14 backend pytest cases pass (games auth gating, index + defaults, stats defaults, quiz seed = 10 questions, save/get roundtrip, invalid-key 400, 128KB 413, restart resets state keeps best_score, complete awards 'we-still-fit', achievements listing, CASE evidence pin+read). Frontend fully verified across /games, /games/jigsaw, /games/timeline, /games/ameen-quiz, /games/sushi-stack, /games/find-koko, /wreck-room, and /games/case-1709. All required data-testids present including: 6 game cards + 4 stat tiles, 3 jigsaw difficulty selectors + jigsaw-board, 3 timeline mode selectors + 8 timeline-card-* + 8 timeline-up-* + timeline-submit, quiz-mode-cute → quiz-play + quiz-answer-a → quiz-reaction, sushi-start → sushi-canvas, koko-mode-relaxed + 12 koko-list-* + zoom in/out/reset/hint, wreck-stage + wreck-toolbox + 10 wreck-tool-* + wreck-tool-tomato + wreck-hit-hard, case-start → case-objectives + phone-os + 17 phone icons + case-puzzle-firewall. CASE 1709 Act I firewall puzzle solved end-to-end: opened modal, entered '111025', submit closed modal and puzzle-card gained success-mint (solved) classes. Game shell controls (game-back/restart/instructions/exit) exposed on Jigsaw; game-restart opens restart-modal with restart-confirm and restart-cancel.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_games.py",
+    "/app/backend/tests/backend_test.py",
+    "/app/test_reports/pytest/games_results.xml"
+  ],
+  "action_items": [
+    "Verify no other test IDs missing under deeper CASE flows (Act II lift, Act I pungun/hathim/notif) — not exhaustively re-tested this pass beyond firewall + testid presence.",
+    "Consider adding CI lint on function names to prevent 'useXxx' regressions of the kind that blocked this build."
+  ],
+  "critical_code_review_comments": [
+    "Fixed: /app/frontend/src/pages/games/Case1709.jsx line 114 defined a plain function 'useHint' which triggered react-hooks/rules-of-hooks (Hook name pattern) and BLOCKED entire frontend compilation. Renamed to 'consumeHint' at definition (L114) and call-site (L230).",
+    "Fixed: package.json shipped react@19.0.0 with react-konva@18.2.10 + konva@9.3.16 — react-konva 18 accesses removed React 19 internal 'ReactCurrentOwner', producing a fatal runtime error on ANY page (all React trees crashed). Upgraded to react-konva@19.2.0 + konva@10.0.0.",
+    "server.py is a single 1150-line file — split into routers (auth, progress, memories, games) before adding more surface.",
+    "In-memory rate limiter (kept from Phase 1) still won't scale across replicas — acceptable for single-user private app.",
+    "profile_id hardcoded to 'ayesha' — no per-user isolation for games either (intentional per PRD)."
+  ],
+  "updated_files": [
+    "/app/frontend/src/pages/games/Case1709.jsx",
+    "/app/frontend/package.json",
+    "/app/frontend/yarn.lock",
+    "/app/backend/tests/test_games.py"
+  ],
+  "success_rate": {"backend": "100% (14/14 games + 20/20 phase-1)", "frontend": "100% of surface-level testid + smoke flows"},
+  "test_credentials": "Gateway answer '17 September 2025'. No username. See /app/memory/test_credentials.md.",
+  "seed_data_creation": "None manually created. Backend auto-seeds 10 quiz questions on startup via ensure_quiz_seed().",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "1) CRITICAL FIXES APPLIED: Renamed useHint→consumeHint in Case1709.jsx (was blocking compile) AND upgraded react-konva 18.2.10→19.2.0 and konva 9.3.16→10.0.0 (was crashing all React trees under React 19). If frontend regresses again, first check ReactCurrentOwner errors + eslint react-hooks. 2) Backend tests use dotenv-loaded env from /app/backend/.env and /app/frontend/.env directly — run with `python -m pytest backend/tests/test_games.py -v -n 0` from /app. 3) Games state cleaned per-test via mongo fixture (game_saves, game_achievements, case_evidence_state). 4) Only CASE Act I firewall was tested end-to-end; pungun/hathim/notif/lift and evidence board drag were not exhaustively re-tested. 5) Rate-limit test in backend_test.py exhausts counter — restart backend if re-running full suite.",
+  "rca of the issue": "Compile block: eslint rule react-hooks/rules-of-hooks treats any identifier starting with 'use' as a React hook; the file defined 'function useHint(...)' but invoked it inside an onHint arrow prop (a callback), which is not allowed. Rename resolved. Runtime block: react-konva@18.x reaches into React internals (ReactCurrentOwner) that were removed in React 19; Wreck Room's react-konva import was crashing the entire app tree at module init. Upgrading to react-konva@19.2.0 + konva@10.0.0 (per konva release notes and peerDep declaration) resolved this."
+}
