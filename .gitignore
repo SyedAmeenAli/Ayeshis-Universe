@@ -93,4 +93,6 @@ frontend/node_modules/.cache/default-development/0.pack
 .env.*
 backend/.env
 frontend/.env
+# Committed on purpose: build-time only, no secrets, needed for Vercel builds
+!frontend/.env.production
 frontend/node_modules/.cache/default-development/11.pack
