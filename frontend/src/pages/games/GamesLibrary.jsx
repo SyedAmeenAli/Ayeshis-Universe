@@ -4,14 +4,15 @@ import { motion } from "framer-motion";
 import { fetchGames, fetchStats } from "@/lib/gamesApi";
 import { SkullBow } from "@/components/mascot/SkullBow";
 import { ArrowUpRight } from "lucide-react";
+import { COVER_IMAGES } from "@/lib/coverImages";
 
 const GAMES = [
-  { key: "case-1709", label: "CASE 1709", tagline: "Ameen is missing. Recover him.", difficulty: "Very Hard", est: "90–120 min", to: "/games/case-1709", size: "featured", theme: "detective" },
-  { key: "jigsaw", label: "Us, But Broken", tagline: "A jigsaw of us. Somehow, we still fit.", difficulty: "Adjustable", est: "5–20 min", to: "/games/jigsaw", theme: "romantic" },
-  { key: "timeline", label: "Relationship Timeline", tagline: "Arrange our history without cheating.", difficulty: "Medium", est: "5–10 min", to: "/games/timeline", theme: "archive" },
-  { key: "ameen-quiz", label: "How Well Do You Know Baby Boy?", tagline: "Cute, questionable, competitive.", difficulty: "Easy → Hard", est: "3–8 min", to: "/games/ameen-quiz", theme: "quiz" },
-  { key: "sushi-stack", label: "Sushi Stack", tagline: "Build a tower with real physics.", difficulty: "Chaotic", est: "2–10 min", to: "/games/sushi-stack", theme: "sushi" },
-  { key: "find-koko", label: "Find Chota Koko", tagline: "Twelve hidden things. Do not miss dignity.", difficulty: "Cozy", est: "4–15 min", to: "/games/find-koko", theme: "hidden" },
+  { key: "case-1709", label: "CASE 1709", tagline: "Ameen is missing. Recover him.", difficulty: "Very Hard", est: "90–120 min", to: "/games/case-1709", size: "featured", theme: "detective", cover: COVER_IMAGES["case-1709"] },
+  { key: "jigsaw", label: "Us, But Broken", tagline: "A jigsaw of us. Somehow, we still fit.", difficulty: "Adjustable", est: "5–20 min", to: "/games/jigsaw", theme: "romantic", cover: COVER_IMAGES.jigsaw },
+  { key: "timeline", label: "Relationship Timeline", tagline: "Arrange our history without cheating.", difficulty: "Medium", est: "5–10 min", to: "/games/timeline", theme: "archive", cover: COVER_IMAGES.timeline },
+  { key: "ameen-quiz", label: "How Well Do You Know Baby Boy?", tagline: "Cute, questionable, competitive.", difficulty: "Easy → Hard", est: "3–8 min", to: "/games/ameen-quiz", theme: "quiz", cover: COVER_IMAGES["ameen-quiz"] },
+  { key: "sushi-stack", label: "Sushi Stack", tagline: "Build a tower with real physics.", difficulty: "Chaotic", est: "2–10 min", to: "/games/sushi-stack", theme: "sushi", cover: COVER_IMAGES["sushi-stack"] },
+  { key: "find-koko", label: "Find Chota Koko", tagline: "Twelve hidden things. Do not miss dignity.", difficulty: "Cozy", est: "4–15 min", to: "/games/find-koko", theme: "hidden", cover: COVER_IMAGES["find-koko"] },
 ];
 
 const ACHIEVEMENTS = {
@@ -108,12 +109,22 @@ function GameCard({ game, save, index }) {
       data-testid={`game-card-${game.key}`}
     >
       <Link to={game.to} className="block h-full w-full p-6 relative group" data-cursor="open">
+        {game.cover && (
+          <>
+            <img
+              src={game.cover}
+              alt=""
+              className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-40 group-hover:opacity-55 transition-opacity duration-500"
+            />
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-archive via-archive/45 to-archive/15" />
+          </>
+        )}
         {isFeatured && <CaseFeaturedBg />}
-        {game.theme === "sushi" && <SushiPreviewBg />}
-        {game.theme === "hidden" && <KokoPreviewBg />}
-        {game.theme === "quiz" && <QuizPreviewBg />}
-        {game.theme === "romantic" && <JigsawPreviewBg />}
-        {game.theme === "archive" && <TimelinePreviewBg />}
+        {game.theme === "sushi" && !game.cover && <SushiPreviewBg />}
+        {game.theme === "hidden" && !game.cover && <KokoPreviewBg />}
+        {game.theme === "quiz" && !game.cover && <QuizPreviewBg />}
+        {game.theme === "romantic" && !game.cover && <JigsawPreviewBg />}
+        {game.theme === "archive" && !game.cover && <TimelinePreviewBg />}
 
         <div className="relative z-10 h-full flex flex-col justify-between gap-6">
           <div>

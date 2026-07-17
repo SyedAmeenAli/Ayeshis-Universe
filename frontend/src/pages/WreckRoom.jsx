@@ -1,6 +1,9 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Stage, Layer, Line, Rect, Group, Text } from "react-konva";
+import { Stage, Layer, Line, Rect, Group, Text, Image as KonvaImage } from "react-konva";
+import useImage from "use-image";
+
+const AMEEN_FACE_URL = "/assets/real/wreck-ameen-face.jpeg";
 import { GameShell } from "@/components/games/GameShell";
 import { MagneticButton } from "@/components/motion/MagneticButton";
 import { WRECK_REACTIONS, WRECK_TOOLS } from "@/data/wreckReactions";
@@ -9,9 +12,25 @@ import { useGameSave } from "@/hooks/useGameSave";
 
 const STAGE_W = 720;
 const STAGE_H = 720;
+const THROW_DURATION_MS = 480;
+const TOOL_EMOJI = {
+  pillow: "☁️",
+  tomato: "🍅",
+  slipper: "🩴",
+  textbook: "📕",
+  sushi: "🍣",
+  hammer: "🔨",
+  balloon: "🎈",
+  "hit-hard": "💥",
+};
+
+function lerp(a, b, t) {
+  return a + (b - a) * t;
+}
 
 export default function WreckRoom() {
   const stageRef = useRef(null);
+  const [ameenFace] = useImage(AMEEN_FACE_URL);
   const [tool, setTool] = useState("marker");
   const [health, setHealth] = useState(100);
   const [combo, setCombo] = useState(0);
@@ -24,6 +43,7 @@ export default function WreckRoom() {
   const [ko, setKo] = useState(false);
   const [aim, setAim] = useState(null);
   const [totalHits, setTotalHits] = useState(0);
+  const [, forceTick] = useState(0);
 
   useEffect(() => {
     (async () => {
@@ -49,6 +69,38 @@ export default function WreckRoom() {
   }), [lines, decals, health, bestCombo, ko]);
 
   useGameSave("wreck-room", buildPayload, { intervalMs: 10000, active: true });
+
+  // Drive in-flight thrown projectiles: interpolate position along an arc,
+  // then resolve (damage/decal or miss) once each one lands.
+  useEffect(() => {
+    if (projectiles.length === 0) return;
+    let raf;
+    const tick = () => {
+      const now = performance.now();
+      const landed = projectiles.filter((p) => now - p.startedAt >= p.duration);
+      if (landed.length > 0) {
+        setProjectiles((prev) => prev.filter((p) => now - p.startedAt < p.duration));
+        landed.forEach((p) => resolveProjectile(p));
+      } else {
+        forceTick((n) => n + 1);
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectiles]);
+
+  function resolveProjectile(p) {
+    if (p.inHit) {
+      applyDamage(p.damage);
+      setDecals((prev) => [...prev, { x: p.x1, y: p.y1, color: p.color, size: p.damage * 3 + 6, tool: p.tool }]);
+    } else {
+      setBubble({ text: "Missed. Ameen breathes.", kind: "miss", ts: Date.now() });
+      setTimeout(() => setBubble(null), 1200);
+      setCombo(0);
+    }
+  }
 
   const activeTool = WRECK_TOOLS.find((t) => t.key === tool);
 
@@ -129,23 +181,27 @@ export default function WreckRoom() {
       const dx = aim.x - aim.startX;
       const dy = aim.y - aim.startY;
       const power = Math.min(1, Math.hypot(dx, dy) / 300);
-      // Target zone: dartboard-style hit region on the target
-      const target = { x: STAGE_W * 0.5, y: STAGE_H * 0.45, r: 160 };
+      // Target zone: the big photo card itself
+      const target = { x: STAGE_W * 0.5, y: STAGE_H * 0.48 };
       const finalX = target.x + dx * (0.6 + power);
       const finalY = target.y + dy * (0.6 + power);
-      // Check if within hit box (roughly the Ameen figure)
-      const inHit = Math.abs(finalX - target.x) < 130 && Math.abs(finalY - target.y) < 220;
-      if (inHit) {
-        applyDamage(activeTool.damage);
-        setDecals((prev) => [
-          ...prev,
-          { x: finalX, y: finalY, color: activeTool.color, size: activeTool.damage * 3 + 6, tool },
-        ]);
-      } else {
-        setBubble({ text: "Missed. Ameen breathes.", kind: "miss", ts: Date.now() });
-        setTimeout(() => setBubble(null), 1200);
-        setCombo(0);
-      }
+      const inHit = Math.abs(finalX - target.x) < 230 && Math.abs(finalY - target.y) < 260;
+      setProjectiles((prev) => [
+        ...prev,
+        {
+          id: `${Date.now()}-${Math.random()}`,
+          tool,
+          color: activeTool.color,
+          damage: activeTool.damage,
+          x0: aim.startX,
+          y0: STAGE_H + 40,
+          x1: finalX,
+          y1: finalY,
+          startedAt: performance.now(),
+          duration: THROW_DURATION_MS,
+          inHit,
+        },
+      ]);
       setAim(null);
     }
   }
@@ -168,8 +224,24 @@ export default function WreckRoom() {
 
   function hitMeHard() {
     if (ko) return;
-    applyDamage(18);
-    setDecals((prev) => [...prev, { x: STAGE_W * 0.5 + (Math.random() - 0.5) * 80, y: STAGE_H * 0.45 + (Math.random() - 0.5) * 80, color: "#FF405C", size: 24, tool: "hit-hard" }]);
+    const finalX = STAGE_W * 0.5 + (Math.random() - 0.5) * 80;
+    const finalY = STAGE_H * 0.48 + (Math.random() - 0.5) * 80;
+    setProjectiles((prev) => [
+      ...prev,
+      {
+        id: `${Date.now()}-${Math.random()}`,
+        tool: "hit-hard",
+        color: "#FF405C",
+        damage: 18,
+        x0: STAGE_W * 0.5,
+        y0: STAGE_H + 60,
+        x1: finalX,
+        y1: finalY,
+        startedAt: performance.now(),
+        duration: THROW_DURATION_MS,
+        inHit: true,
+      },
+    ]);
   }
 
   return (
@@ -249,28 +321,30 @@ export default function WreckRoom() {
               <Layer>
                 {/* Backdrop */}
                 <Rect x={0} y={0} width={STAGE_W} height={STAGE_H} fill="#141419" />
-                {/* Comic target — Ameen placeholder figure */}
-                <Group x={STAGE_W * 0.5} y={STAGE_H * 0.45}>
-                  {/* body */}
-                  <Rect x={-90} y={40} width={180} height={200} cornerRadius={30} fill="#22222B" />
-                  {/* head */}
-                  <Rect x={-70} y={-140} width={140} height={180} cornerRadius={70} fill={ko ? "#7F7885" : "#F7F4F6"} />
-                  {/* eyes */}
-                  {!ko && (
-                    <>
-                      <Rect x={-40} y={-90} width={16} height={4} fill="#0B0B0F" />
-                      <Rect x={20} y={-90} width={16} height={4} fill="#0B0B0F" />
-                    </>
-                  )}
-                  {ko && (
-                    <>
-                      <Text x={-52} y={-102} text="X X" fontSize={30} fill="#0B0B0F" />
-                    </>
-                  )}
-                  {/* mouth */}
-                  <Rect x={-16} y={-40} width={32} height={4} fill="#0B0B0F" />
+                {/* Comic target — one big photo card, the whole hit box */}
+                <Group x={STAGE_W * 0.5} y={STAGE_H * 0.48}>
+                  <Group
+                    clipFunc={(ctx) => {
+                      ctx.beginPath();
+                      const w = 460, h = 520, r = 36;
+                      ctx.moveTo(-w / 2 + r, -h / 2);
+                      ctx.arcTo(w / 2, -h / 2, w / 2, h / 2, r);
+                      ctx.arcTo(w / 2, h / 2, -w / 2, h / 2, r);
+                      ctx.arcTo(-w / 2, h / 2, -w / 2, -h / 2, r);
+                      ctx.arcTo(-w / 2, -h / 2, w / 2, -h / 2, r);
+                      ctx.closePath();
+                    }}
+                  >
+                    {ameenFace ? (
+                      <KonvaImage image={ameenFace} x={-230} y={-260} width={460} height={520} opacity={ko ? 0.55 : 1} />
+                    ) : (
+                      <Rect x={-230} y={-260} width={460} height={520} fill={ko ? "#7F7885" : "#F7F4F6"} />
+                    )}
+                    {ko && <Rect x={-230} y={-260} width={460} height={520} fill="#0B0B0F" opacity={0.35} />}
+                  </Group>
+                  {ko && <Text x={-60} y={-30} text="X X" fontSize={48} fill="#F7F4F6" />}
                   {/* label */}
-                  <Text x={-40} y={260} text="AMEEN" fontSize={14} fill="#7F7885" letterSpacing={4} />
+                  <Text x={-40} y={280} text="AMEEN" fontSize={16} fill="#F7F4F6" letterSpacing={5} />
                 </Group>
 
                 {/* Draw lines */}
@@ -301,6 +375,27 @@ export default function WreckRoom() {
                     )}
                   </Group>
                 ))}
+
+                {/* In-flight thrown objects — arc from launch point to impact */}
+                {projectiles.map((p) => {
+                  const progress = Math.min(1, (performance.now() - p.startedAt) / p.duration);
+                  const x = lerp(p.x0, p.x1, progress);
+                  const arcLift = 160 * Math.sin(Math.PI * progress);
+                  const y = lerp(p.y0, p.y1, progress) - arcLift;
+                  const spin = progress * 540;
+                  return (
+                    <Text
+                      key={p.id}
+                      x={x - 18}
+                      y={y - 18}
+                      text={TOOL_EMOJI[p.tool] || "●"}
+                      fontSize={36}
+                      rotation={spin}
+                      offsetX={18}
+                      offsetY={18}
+                    />
+                  );
+                })}
 
                 {/* Aim indicator */}
                 {aim && (

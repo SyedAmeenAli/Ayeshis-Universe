@@ -31,7 +31,7 @@ export default function Case1709() {
   const [act1UnlockedApps, setAct1UnlockedApps] = useState(new Set([
     "messages", "phone", "contacts", "gallery", "camera", "files", "notes", "maps", "browser", "mail", "calculator", "settings", "notif", "terminal", "board", "logs",
   ]));
-  const [hathimUnlocked, setHathimUnlocked] = useState(false);
+  const [sarahUnlocked, setSarahUnlocked] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -46,7 +46,7 @@ export default function Case1709() {
           setHintsUsed(s.hints_used || {});
           setEvidence(s.evidence || []);
           setElapsed(save.elapsed_seconds || 0);
-          setHathimUnlocked(!!s.hathim_unlocked);
+          setSarahUnlocked(!!s.sarah_unlocked);
           if (s.ghost_unlocked) setAct1UnlockedApps(new Set([...act1UnlockedApps, "ghost"]));
         }
       } catch (e) {}
@@ -75,14 +75,14 @@ export default function Case1709() {
         solved_puzzles: solvedPuzzles,
         hints_used: hintsUsed,
         evidence,
-        hathim_unlocked: hathimUnlocked,
+        sarah_unlocked: sarahUnlocked,
         ghost_unlocked: act === "act-iv" || act === "act-v",
       },
       score: computeScore(solvedPuzzles, hintsUsed),
       elapsed_seconds: elapsed,
       status: "active",
     };
-  }, [status, act, solvedPuzzles, hintsUsed, evidence, elapsed, hathimUnlocked]);
+  }, [status, act, solvedPuzzles, hintsUsed, evidence, elapsed, sarahUnlocked]);
 
   useGameSave("case-1709", buildPayload, { intervalMs: 15000, active: status === "playing" });
 
@@ -153,7 +153,7 @@ export default function Case1709() {
       gameKey="case-1709"
       title="CASE 1709"
       subtitle={CASE_META.acts.find((a) => a.key === act)?.label}
-      onRestart={() => { setStatus("intro"); setSolvedPuzzles([]); setEvidence([]); setElapsed(0); setAct("act-i"); setHathimUnlocked(false); }}
+      onRestart={() => { setStatus("intro"); setSolvedPuzzles([]); setEvidence([]); setElapsed(0); setAct("act-i"); setSarahUnlocked(false); }}
       instructions={[
         "This is not a quiz. Investigate real evidence.",
         "Open apps on the phone. Pin evidence to the board.",
@@ -195,7 +195,7 @@ export default function Case1709() {
               unlockedApps={Array.from(act1UnlockedApps)}
               act={ACT_KEYS.indexOf(act) + 1}
               actions={{
-                act1: { hathimUnlocked },
+                act1: { sarahUnlocked },
                 evidenceList: () => evidence.map((e) => e.key),
                 terminalPhrase: (p) => {
                   if (openPuzzle === "pungun") {
@@ -231,7 +231,7 @@ export default function Case1709() {
         onSubmit={(val) => handleSubmit(act, currentPuzzle.key, val)}
         solvedPuzzles={solvedPuzzles}
         onSolve={(sub) => markSolved(act, sub || currentPuzzle.key)}
-        onUnlockHathim={() => setHathimUnlocked(true)}
+        onUnlockSarah={() => setSarahUnlocked(true)}
       />
 
       {/* Evidence board */}
@@ -252,7 +252,7 @@ export default function Case1709() {
       ok = normaliseCaseAnswer(raw) === puzzle.answer_target;
     } else if (puzzle.kind === "password") {
       ok = normaliseCaseAnswer(raw) === puzzle.answer_target;
-      if (ok) setHathimUnlocked(true);
+      if (ok) setSarahUnlocked(true);
     } else if (puzzle.kind === "choice") {
       ok = String(raw) === String(puzzle.answer_target);
     }
@@ -459,7 +459,7 @@ function EvidenceBoard({ evidence, onUnpin }) {
 // ---------------------------------------------------------------------------
 // Puzzle modal — dispatches by puzzle kind
 // ---------------------------------------------------------------------------
-function PuzzleModal({ act, puzzle, open, onClose, hintsUsed, onHint, onSubmit, solvedPuzzles, onSolve, onUnlockHathim }) {
+function PuzzleModal({ act, puzzle, open, onClose, hintsUsed, onHint, onSubmit, solvedPuzzles, onSolve, onUnlockSarah }) {
   if (!puzzle) return null;
   const solved = solvedPuzzles.includes(`${act}:${puzzle.key}`);
   return (
@@ -475,15 +475,19 @@ function PuzzleModal({ act, puzzle, open, onClose, hintsUsed, onHint, onSubmit, 
           onSubmit={onSubmit}
           onSolve={onSolve}
           onClose={onClose}
-          onUnlockHathim={onUnlockHathim}
+          onUnlockSarah={onUnlockSarah}
         />
       )}
     </Modal>
   );
 }
 
-function PuzzleBody({ act, puzzle, onHint, hintsUsed, onSubmit, onSolve, onClose, onUnlockHathim }) {
-  // Simple prompt puzzles: firewall, pungun (phrase), hathim (password), cabinet (code), packet firewall
+function PuzzleBody({ act, puzzle, onHint, hintsUsed, onSubmit, onSolve, onClose, onUnlockSarah }) {
+  // sarah has a dedicated component (password unlock + contradiction follow-up)
+  // and must be checked before the generic kind-based dispatch below, since its
+  // kind is "password" and would otherwise be swallowed by that branch.
+  if (puzzle.key === "sarah") return <SarahPuzzle puzzle={puzzle} onSolve={onSolve} onHint={onHint} hintsUsed={hintsUsed} onUnlockSarah={onUnlockSarah} />;
+  // Simple prompt puzzles: firewall, pungun (phrase), cabinet (code), packet firewall
   if (["date", "phrase", "password", "code"].includes(puzzle.kind)) {
     return <TextPuzzle puzzle={puzzle} onSubmit={onSubmit} onHint={onHint} hintsUsed={hintsUsed} onClose={onClose} />;
   }
@@ -504,7 +508,6 @@ function PuzzleBody({ act, puzzle, onHint, hintsUsed, onSubmit, onSolve, onClose
   if (puzzle.key === "contradictions") return <ContradictionsPuzzle puzzle={puzzle} onSolve={onSolve} onHint={onHint} hintsUsed={hintsUsed} />;
   if (puzzle.key === "identity") return <IdentityPuzzle puzzle={puzzle} onSolve={onSolve} />;
   if (puzzle.key === "terminal") return <TerminalPuzzle puzzle={puzzle} onSolve={onSolve} onHint={onHint} hintsUsed={hintsUsed} />;
-  if (puzzle.key === "hathim") return <HathimPuzzle puzzle={puzzle} onSolve={onSolve} onHint={onHint} hintsUsed={hintsUsed} onUnlockHathim={onUnlockHathim} />;
   return <p>Unsupported puzzle.</p>;
 }
 
@@ -569,7 +572,7 @@ function TextPuzzle({ puzzle, onSubmit, onHint, hintsUsed, onClose }) {
   );
 }
 
-function HathimPuzzle({ puzzle, onSolve, onHint, hintsUsed, onUnlockHathim }) {
+function SarahPuzzle({ puzzle, onSolve, onHint, hintsUsed, onUnlockSarah }) {
   const [pwd, setPwd] = useState("");
   const [unlocked, setUnlocked] = useState(false);
   const [inspected, setInspected] = useState([]);
@@ -579,7 +582,7 @@ function HathimPuzzle({ puzzle, onSolve, onHint, hintsUsed, onUnlockHathim }) {
   function submitPwd() {
     if (normaliseCaseAnswer(pwd) === puzzle.answer_target) {
       setUnlocked(true);
-      onUnlockHathim();
+      onUnlockSarah();
     } else {
       setError("Wrong password.");
       setTimeout(() => setError(""), 1500);
@@ -608,9 +611,9 @@ function HathimPuzzle({ puzzle, onSolve, onHint, hintsUsed, onUnlockHathim }) {
     return (
       <div>
         <p className="text-sm text-text-secondary">{puzzle.prompt}</p>
-        <input value={pwd} onChange={(e) => setPwd(e.target.value)} className="mt-3 w-full bg-surface-2 border border-white/10 rounded-lg px-3 py-2 text-sm" data-testid="case-hathim-pwd" />
+        <input value={pwd} onChange={(e) => setPwd(e.target.value)} className="mt-3 w-full bg-surface-2 border border-white/10 rounded-lg px-3 py-2 text-sm" data-testid="case-sarah-pwd" />
         {error && <p className="mt-2 text-xs text-danger-red">{error}</p>}
-        <div className="mt-3"><MagneticButton variant="primary" size="sm" onClick={submitPwd} data-testid="case-hathim-submit">unlock</MagneticButton></div>
+        <div className="mt-3"><MagneticButton variant="primary" size="sm" onClick={submitPwd} data-testid="case-sarah-submit">unlock</MagneticButton></div>
         <HintTray puzzle={puzzle} onHint={onHint} hintsUsed={hintsUsed} />
       </div>
     );
@@ -638,14 +641,14 @@ function HathimPuzzle({ puzzle, onSolve, onHint, hintsUsed, onUnlockHathim }) {
             key={o.id}
             onClick={() => setConclusion(o.id)}
             className={`text-left rounded-lg border p-2 text-xs ${conclusion === o.id ? "border-lavender bg-lavender/5" : "border-white/10"}`}
-            data-testid={`case-hathim-conclusion-${o.id}`}
+            data-testid={`case-sarah-conclusion-${o.id}`}
           >
             {o.label}
           </button>
         ))}
       </div>
       {error && <p className="mt-2 text-xs text-danger-red">{error}</p>}
-      <div className="mt-3"><MagneticButton variant="primary" size="sm" onClick={submitConclusion} data-testid="case-hathim-conclude">conclude</MagneticButton></div>
+      <div className="mt-3"><MagneticButton variant="primary" size="sm" onClick={submitConclusion} data-testid="case-sarah-conclude">conclude</MagneticButton></div>
     </div>
   );
 }
@@ -1013,7 +1016,7 @@ function PacketPuzzle({ puzzle, onSolve, onHint, hintsUsed }) {
           <option value="">source: any</option>
           <option value="AMEEN_PHONE">AMEEN_PHONE</option>
           <option value="ARCHIVIST_NODE">ARCHIVIST_NODE</option>
-          <option value="HATHIM_PHONE">HATHIM_PHONE</option>
+          <option value="SARAH_PHONE">SARAH_PHONE</option>
         </select>
         <select value={statusF} onChange={(e) => setStatusF(e.target.value)} className="bg-surface-2 border border-white/10 rounded p-1 text-xs" data-testid="case-packet-status">
           <option value="">status: any</option>
@@ -1216,7 +1219,10 @@ function CaseEnding({ score, elapsed, best, onReplay }) {
       </h2>
       <div className="mt-6 space-y-3 max-w-2xl">
         <p className="font-editorial text-lg text-text-secondary">Hi, Detective.</p>
-        <p className="font-editorial text-lg text-text-secondary">No, Hathim did not kidnap me. Unfortunately, he remains innocent of this specific crime.</p>
+        <p className="font-editorial text-lg text-text-secondary">And no, Sarah did not kidnap me. Unfortunately, she remains innocent of this specific crime.</p>
+        <p className="font-editorial text-lg text-text-secondary">
+          The Archivist simply knew that a believable name is more dangerous than an unbelievable story.
+        </p>
         <p className="font-editorial text-lg text-text-secondary">
           Everything you just solved was made because I know how much you love difficult mysteries. I wanted to build something that
           did not treat you like a child, did not give you easy answers and did not end in five minutes.

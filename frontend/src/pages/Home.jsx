@@ -1,10 +1,12 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useProgress } from "@/stores/progressStore";
 import { SkullBow } from "@/components/mascot/SkullBow";
 import { HandwrittenAccent } from "@/components/motion/HandwrittenAccent";
+import { HeroBanner } from "@/components/dashboard/HeroBanner";
 import { RELATIONSHIP_START } from "@/lib/config";
+import { COVER_IMAGES } from "@/lib/coverImages";
 import { ArrowUpRight, Lock } from "lucide-react";
 
 function greeting() {
@@ -117,6 +119,19 @@ const TINTS = {
   muted: "from-white/5 via-transparent to-transparent",
 };
 
+const CARD_COVER = {
+  "our-story": COVER_IMAGES["our-story"],
+  memories: COVER_IMAGES.memories,
+  why: COVER_IMAGES["why-i-love-you"],
+  case: COVER_IMAGES["case-1709"],
+  "wreck-room": COVER_IMAGES["wreck-room"],
+  "our-song": COVER_IMAGES["our-song"],
+  "safe-space": COVER_IMAGES["safe-space"],
+  calendar: COVER_IMAGES.calendar,
+  ayesha: COVER_IMAGES["ayesha-home"],
+  ameen: COVER_IMAGES["ameen-home"],
+};
+
 export default function Home() {
   const {
     hiddenScrollEligible,
@@ -147,36 +162,21 @@ export default function Home() {
 
   return (
     <div className="min-h-screen w-full pt-24 md:pt-28 pb-16 px-5 md:px-10 max-w-[1440px] mx-auto">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-10">
-        <div>
-          <span className="type-mono text-[10px] text-text-muted">
-            PRIVATE ARCHIVE / 1709 · DAY {days}
-          </span>
-          <h1
-            className="mt-3 font-editorial text-5xl md:text-7xl leading-[0.95] tracking-tight"
-            data-testid="home-greeting"
-          >
-            {greeting()} <span className="text-lavender">♡</span>
-          </h1>
-          <p className="mt-3 font-editorial text-lg md:text-xl text-text-secondary max-w-md">
-            Ten months. One private universe.
-          </p>
-        </div>
+      <HeroBanner days={days} greetingText={greeting()} />
 
-        <div className="flex flex-col items-start md:items-end gap-3">
-          <ProgressRing value={Math.min(1, explored / 8)} />
-          <motion.p
-            key={rotatingLines[tickIdx]}
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="font-hand text-2xl text-lavender-soft"
-            data-testid="home-rotating-line"
-          >
-            {rotatingLines[tickIdx]}
-          </motion.p>
-        </div>
+      {/* Status strip */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 mb-10">
+        <motion.p
+          key={rotatingLines[tickIdx]}
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="font-hand text-2xl text-lavender-soft"
+          data-testid="home-rotating-line"
+        >
+          {rotatingLines[tickIdx]}
+        </motion.p>
+        <ProgressRing value={Math.min(1, explored / 8)} />
       </div>
 
       {/* Bento grid */}
@@ -242,11 +242,36 @@ function ProgressRing({ value }) {
 }
 
 function BentoCard({ card, index }) {
+  const ref = useRef(null);
+
+  function handleMouseMove(e) {
+    const el = ref.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const px = ((e.clientX - rect.left) / rect.width) * 100;
+    const py = ((e.clientY - rect.top) / rect.height) * 100;
+    el.style.setProperty("--spot-x", `${px}%`);
+    el.style.setProperty("--spot-y", `${py}%`);
+    const rotateY = ((px - 50) / 50) * 4;
+    const rotateX = -((py - 50) / 50) * 4;
+    el.style.transform = `perspective(900px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) translateZ(0)`;
+  }
+
+  function handleMouseLeave() {
+    const el = ref.current;
+    if (!el) return;
+    el.style.transform = "perspective(900px) rotateX(0deg) rotateY(0deg)";
+  }
+
   return (
     <motion.div
+      ref={ref}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
       initial={{ opacity: 0, y: 18 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.7, delay: 0.05 * index, ease: [0.22, 1, 0.36, 1] }}
+      style={{ transition: "transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1)" }}
       className={`relative overflow-hidden rounded-2xl border border-white/8 bg-surface-1 min-h-[160px] ${card.className} group`}
       data-testid={`bento-${card.id}`}
     >
@@ -255,9 +280,20 @@ function BentoCard({ card, index }) {
         className="block h-full w-full p-5 md:p-6 relative"
         data-cursor="open"
       >
+        {CARD_COVER[card.id] && (
+          <>
+            <img
+              src={CARD_COVER[card.id]}
+              alt=""
+              className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-45 group-hover:opacity-60 transition-opacity duration-500"
+            />
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-archive via-archive/40 to-archive/10" />
+          </>
+        )}
         <div
           className={`pointer-events-none absolute inset-0 bg-gradient-to-br ${TINTS[card.tint]} opacity-70`}
         />
+        <div className="apu-bento-spotlight pointer-events-none absolute inset-0" />
         <div className="absolute inset-0 border border-transparent group-hover:border-lavender/25 transition-colors duration-500 rounded-2xl pointer-events-none" />
 
         {/* corner id */}
@@ -306,8 +342,18 @@ function LockedFinalCard({ unlocked }) {
           </div>
         </Link>
       ) : (
-        <div className="p-6 md:p-8 flex items-center justify-between gap-6 flex-wrap">
-          <div className="flex items-start gap-4">
+        <div className="relative p-6 md:p-8 flex items-center justify-between gap-6 flex-wrap">
+          {COVER_IMAGES["locked-final"] && (
+            <>
+              <img
+                src={COVER_IMAGES["locked-final"]}
+                alt=""
+                className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-20"
+              />
+              <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-surface-1 via-surface-1/70 to-surface-1/30" />
+            </>
+          )}
+          <div className="relative flex items-start gap-4">
             <div className="w-10 h-10 rounded-full border border-white/12 flex items-center justify-center">
               <Lock className="w-4 h-4 text-text-muted" />
             </div>
@@ -321,7 +367,7 @@ function LockedFinalCard({ unlocked }) {
               </p>
             </div>
           </div>
-          <SkullBow size={42} mood="sleepy" />
+          <SkullBow size={42} mood="sleepy" className="relative" />
         </div>
       )}
     </motion.div>

@@ -8,6 +8,8 @@ import { MagneticButton } from "@/components/motion/MagneticButton";
 import { useProgress } from "@/stores/progressStore";
 import { Heart, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
+import { photoForAssetId } from "@/lib/realAssets";
+import { photoForAyeshaAssetId } from "@/lib/ayeshaPhotos";
 
 const LONG_PRESS_MS = 3000;
 
@@ -98,6 +100,29 @@ export default function MemoryDetail() {
       <div className="grid md:grid-cols-12 gap-8 md:gap-14 items-start">
         <div className="md:col-span-6 relative">
           <AssetPlaceholder asset={memory.cover_asset} aspect="4/5" />
+
+          {/* Gallery strip — a mix of "her and I" couple photos plus solo
+              shots of Ayesha, all real, none from the cover slot above */}
+          <div className="mt-3 grid grid-cols-3 gap-2">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <img
+                key={`couple-${i}`}
+                src={photoForAssetId(`MEM-GALLERY-${memory.slug}-${i}`)}
+                alt=""
+                className="w-full aspect-square rounded-lg object-cover"
+                data-testid={`memory-gallery-couple-${i}`}
+              />
+            ))}
+            {Array.from({ length: 3 }).map((_, i) => (
+              <img
+                key={`solo-${i}`}
+                src={photoForAyeshaAssetId(`MEM-GALLERY-${memory.slug}-${i}`)}
+                alt=""
+                className="w-full aspect-square rounded-lg object-cover"
+                data-testid={`memory-gallery-solo-${i}`}
+              />
+            ))}
+          </div>
 
           {memory.hidden_bow && (
             <HiddenBow

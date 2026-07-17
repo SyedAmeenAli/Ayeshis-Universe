@@ -8,6 +8,15 @@ import { MagneticButton } from "@/components/motion/MagneticButton";
 import { TIMELINE_EVENTS } from "@/data/timelineEvents";
 import { fetchGameSave, completeGame, startGame } from "@/lib/gamesApi";
 import { useGameSave } from "@/hooks/useGameSave";
+import { photoForAssetId } from "@/lib/realAssets";
+import { photoForAyeshaAssetId } from "@/lib/ayeshaPhotos";
+
+// Her birthday event gets a photo from Ayesha's own pool; everything else
+// draws from the shared couple pool, keyed by event id so it's stable.
+function photoForTimelineEvent(event) {
+  if (event.id === "valentine") return photoForAyeshaAssetId(`TIMELINE-${event.id}`);
+  return photoForAssetId(`TIMELINE-${event.id}`);
+}
 
 const MODES = {
   story: { key: "story", label: "Story Mode", count: 8, showDates: true },
@@ -272,6 +281,11 @@ function TimelineCard({ event, idx, total, showDate, onMoveUp, onMoveDown, wrong
         ⋮⋮
       </button>
       <span className="w-8 text-center type-mono text-[10px] text-lavender">{String(idx + 1).padStart(2, "0")}</span>
+      <img
+        src={photoForTimelineEvent(event)}
+        alt=""
+        className="w-12 h-12 rounded-lg object-cover flex-shrink-0"
+      />
       <div className="flex-1">
         <h3 className="font-editorial text-lg leading-tight">{event.title}</h3>
         <p className="type-mono text-[9px] text-text-muted mt-1">

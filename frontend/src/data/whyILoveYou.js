@@ -83,7 +83,7 @@ export const WHY_I_LOVE_YOU = {
       heading: "The Chaos You Bring",
       copy: [
         "I love the completely unnecessary vocabulary we created.",
-        "Pungun. Hathim's potty. Hum toh aise hi hai. The ball incident. The lift incident. The accidental confession.",
+        "Pungun. Certified potty. Hum toh aise hi hai. The ball incident. The lift incident. The accidental confession.",
         "The jokes that would make no sense to anyone else.",
         "Loving you has given ordinary days strange little details that belong only to us.",
       ],

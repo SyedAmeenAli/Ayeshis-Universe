@@ -222,8 +222,8 @@ export const STORY_SECTIONS = [
         body: "A family word that should never have become a song. You made sure it did.",
       },
       {
-        id: "hathim",
-        title: "Hathim's Potty",
+        id: "certified-potty",
+        title: "Certified Potty",
         body: "A mature and intellectually advanced contribution to our relationship vocabulary.",
       },
       {

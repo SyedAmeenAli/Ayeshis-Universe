@@ -5,10 +5,31 @@ import { MagneticButton } from "@/components/motion/MagneticButton";
 import { KOKO_OBJECTS } from "@/data/kokoScene";
 import { fetchGameSave, completeGame, startGame, putGameSave } from "@/lib/gamesApi";
 import { useGameSave } from "@/hooks/useGameSave";
+import { photoForAssetId } from "@/lib/realAssets";
 
 /**
  * Find Chota Koko — normalized coord hidden-object hunt with pan/zoom.
+ * Scene backdrop is a real photo; every hidden object renders as a small,
+ * dim marker at its coordinate so it's actually findable, plus a slow
+ * circling ring so the eye has something to catch.
  */
+
+const KOKO_SCENE_PHOTO = photoForAssetId("KOKO-ROOM-SCENE");
+
+const OBJECT_EMOJI = {
+  bow: "🎀",
+  tulip: "🌷",
+  ring: "💍",
+  "lift-button": "🛗",
+  sushi: "🍣",
+  "hinge-icon": "📱",
+  "grey-dress": "👗",
+  "orr-sign": "🛣️",
+  "cravery-receipt": "🧾",
+  potty: "🚽",
+  "pungun-cassette": "📼",
+  dignity: "❓",
+};
 
 const MODES = {
   relaxed: { key: "relaxed", label: "Relaxed", timer: 0, hintLimit: 999, decoys: 0 },
@@ -219,31 +240,66 @@ export default function FindKoko() {
                 >
                   <SceneArt />
 
-                  {/* Hint pulse */}
+                  {/* Object markers — dim but visible, so the scene is actually
+                      findable instead of pure blind-click guessing */}
+                  {KOKO_OBJECTS.map((o) => {
+                    const isFound = found.includes(o.key);
+                    if (isFound) return null;
+                    return (
+                      <motion.div
+                        key={o.key}
+                        className="absolute flex items-center justify-center pointer-events-none"
+                        style={{
+                          left: `${o.x * 100}%`,
+                          top: `${o.y * 100}%`,
+                          width: `${o.radius * 200}%`,
+                          height: `${o.radius * 200}%`,
+                          transform: "translate(-50%, -50%)",
+                        }}
+                      >
+                        <span className="text-[min(3vw,22px)] opacity-40 drop-shadow-md" style={{ filter: "grayscale(0.3)" }}>
+                          {OBJECT_EMOJI[o.key] || "•"}
+                        </span>
+                        {/* slow ambient circling ring so the eye has something to catch */}
+                        <motion.span
+                          className="absolute inset-0 rounded-full border border-dashed border-lavender/25"
+                          animate={{ rotate: 360 }}
+                          transition={{ duration: 9, repeat: Infinity, ease: "linear" }}
+                        />
+                      </motion.div>
+                    );
+                  })}
+
+                  {/* Hint pulse — stronger circling ring, tighter + faster */}
                   {pulseKey && (() => {
                     const o = KOKO_OBJECTS.find((x) => x.key === pulseKey);
                     if (!o) return null;
                     return (
                       <motion.span
-                        className="absolute rounded-full border border-lavender/60"
-                        style={{ left: `${o.x * 100}%`, top: `${o.y * 100}%`, width: `${o.radius * 200}%`, height: `${o.radius * 200}%`, transform: "translate(-50%, -50%)" }}
-                        animate={{ scale: [1, 1.6, 1], opacity: [0.9, 0.2, 0.9] }}
-                        transition={{ duration: 1.6, repeat: 2 }}
+                        className="absolute rounded-full border-2 border-lavender/70"
+                        style={{ left: `${o.x * 100}%`, top: `${o.y * 100}%`, width: `${o.radius * 260}%`, height: `${o.radius * 260}%`, transform: "translate(-50%, -50%)" }}
+                        animate={{ scale: [1, 1.7, 1], opacity: [0.95, 0.25, 0.95], rotate: [0, 180] }}
+                        transition={{ duration: 1.6, repeat: 2, ease: "easeInOut" }}
                       />
                     );
                   })()}
 
-                  {/* Found highlights */}
+                  {/* Found highlights — a ring that circles in, then settles */}
                   {found.map((k) => {
                     const o = KOKO_OBJECTS.find((x) => x.key === k);
                     if (!o) return null;
                     return (
-                      <span
+                      <motion.span
                         key={k}
-                        className="absolute rounded-full border-2 border-success-mint/70 bg-success-mint/10"
+                        className="absolute rounded-full border-2 border-success-mint/70 bg-success-mint/10 flex items-center justify-center"
                         style={{ left: `${o.x * 100}%`, top: `${o.y * 100}%`, width: `${o.radius * 200}%`, height: `${o.radius * 200}%`, transform: "translate(-50%, -50%)" }}
+                        initial={{ scale: 2.2, opacity: 0, rotate: -90 }}
+                        animate={{ scale: 1, opacity: 1, rotate: 0 }}
+                        transition={{ duration: 0.6, ease: [0.34, 1.56, 0.64, 1] }}
                         data-testid={`koko-found-${k}`}
-                      />
+                      >
+                        <span className="text-[min(3vw,22px)]">{OBJECT_EMOJI[k] || "✓"}</span>
+                      </motion.span>
                     );
                   })}
                 </div>
@@ -362,49 +418,15 @@ function ControlBtn({ onClick, label, testid }) {
 }
 
 /**
- * Illustrated placeholder scene. Vector-only, deterministic. Real art can replace.
+ * Real photo backdrop for the hidden-object hunt, replacing the old
+ * abstract-shapes SVG that had no actual searchable content in it.
  */
 function SceneArt() {
+  if (!KOKO_SCENE_PHOTO) return <div className="absolute inset-0 bg-surface-2" />;
   return (
-    <svg viewBox="0 0 100 62.5" xmlns="http://www.w3.org/2000/svg" className="absolute inset-0 w-full h-full" preserveAspectRatio="none">
-      {/* wall gradient */}
-      <defs>
-        <linearGradient id="wall" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#1A1A21" />
-          <stop offset="1" stopColor="#0E0E13" />
-        </linearGradient>
-      </defs>
-      <rect width="100" height="62.5" fill="url(#wall)" />
-      {/* floor */}
-      <rect y="52" width="100" height="10.5" fill="#22222B" />
-      {/* window */}
-      <rect x="76" y="8" width="18" height="16" fill="#141419" stroke="#B89CFF" strokeWidth="0.3" />
-      <line x1="85" y1="8" x2="85" y2="24" stroke="#B89CFF" strokeWidth="0.2" />
-      <line x1="76" y1="16" x2="94" y2="16" stroke="#B89CFF" strokeWidth="0.2" />
-      {/* shelf */}
-      <rect x="6" y="10" width="20" height="1.4" fill="#2C2C37" />
-      <rect x="8" y="7" width="4" height="3" fill="#F7F4F6" opacity="0.5" />
-      <rect x="14" y="6" width="3.5" height="4" fill="#8B5CF6" opacity="0.6" />
-      <rect x="19" y="7.5" width="4" height="2.5" fill="#F3A7C4" opacity="0.7" />
-      {/* desk */}
-      <rect x="4" y="40" width="30" height="12" fill="#22222B" />
-      <rect x="5" y="42" width="4" height="3" fill="#7CE2BE" />
-      <rect x="10" y="43" width="7" height="2" fill="#B89CFF" />
-      {/* café table */}
-      <rect x="58" y="30" width="18" height="3" fill="#2C2C37" />
-      <circle cx="62" cy="30" r="1.2" fill="#F3A7C4" />
-      <rect x="65" y="26" width="2" height="4" fill="#7F7885" />
-      {/* photo wall */}
-      <rect x="36" y="12" width="20" height="14" fill="#141419" stroke="#7F7885" strokeWidth="0.2" />
-      <rect x="38" y="14" width="7" height="4" fill="#8B5CF6" opacity="0.4" />
-      <rect x="46" y="14" width="8" height="4" fill="#F3A7C4" opacity="0.4" />
-      <rect x="38" y="20" width="16" height="4" fill="#F7F4F6" opacity="0.2" />
-      {/* bed */}
-      <rect x="70" y="44" width="26" height="8" fill="#1A1A21" />
-      <rect x="70" y="42" width="26" height="3" fill="#D1C2FF" opacity="0.3" />
-      {/* posters */}
-      <rect x="30" y="4" width="6" height="8" fill="#8B5CF6" opacity="0.3" />
-      {/* small icons (only decoration — the hit test uses coords from data) */}
-    </svg>
+    <div className="absolute inset-0">
+      <img src={KOKO_SCENE_PHOTO} alt="" className="absolute inset-0 w-full h-full object-cover" />
+      <div className="absolute inset-0 bg-archive/35" />
+    </div>
   );
 }

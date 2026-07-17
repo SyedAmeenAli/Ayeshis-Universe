@@ -2,7 +2,9 @@
   "short_name": "Ayeshi",
   "name": "Ayesha's Private Universe",
   "description": "Private Archive 1709 — a world made for one person.",
-  "icons": [],
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ],
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait",

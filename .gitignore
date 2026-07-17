@@ -76,6 +76,12 @@ agenthub/agents/youtube/db
 # Build caches
 .cache/
 
+# Claude Code local worktrees/config (not part of the app)
+.claude/worktrees/
+
+# Oversized media that exceeds GitHub's 100MB file limit
+frontend/public/assets/real/hero-video.mp4
+
 memory/test_credentials.md
 
 # Mobile development

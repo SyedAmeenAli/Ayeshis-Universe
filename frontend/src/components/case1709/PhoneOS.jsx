@@ -155,7 +155,7 @@ function PhoneCallsApp({ pinEvidence }) {
     { key: "ayesha1", name: "Ayesha ♡", type: "outgoing", dur: "24:12", ts: "21:15" },
     { key: "unknown1", name: "Unknown", type: "missed", dur: "0:00", ts: "23:41" },
     { key: "unknown2", name: "Unknown", type: "missed", dur: "0:00", ts: "23:43" },
-    { key: "hathim", name: "Hathim", type: "outgoing", dur: "0:47", ts: "20:12" },
+    { key: "sarah", name: "Sarah", type: "outgoing", dur: "0:47", ts: "20:12" },
     { key: "cravery", name: "Cravery Café", type: "outgoing", dur: "1:22", ts: "19:44" },
   ];
   return (
@@ -206,7 +206,7 @@ function ContactsApp({ pinEvidence }) {
 function GalleryApp({ pinEvidence }) {
   const photos = [
     { key: "cctv-cravery", label: "cctv_cravery_still.png", tag: "CCTV", note: "Café interior — table 4" },
-    { key: "hathim-alibi", label: "hathim_alibi_thumb.png", tag: "photo", note: "Timestamp questionable" },
+    { key: "sarah-alibi", label: "sarah_alibi_thumb.png", tag: "photo", note: "Timestamp questionable" },
     { key: "grey-room", label: "unknown_room.png", tag: "unknown", note: "Corrupted metadata" },
     { key: "wagon-r", label: "wagon_r.png", tag: "vehicle", note: "Ameen's car" },
     { key: "tulip", label: "tulip.png", tag: "flower", note: "Ayesha loved these" },
@@ -261,21 +261,21 @@ function FilesApp({ actions, act }) {
             <p className="mt-2 type-mono text-[9px] text-text-muted">Use the Archive Terminal → "decode PUNGUN.bin" to translate.</p>
           </div>
         )}
-        {file.key === "hathim-alibi" && (
+        {file.key === "sarah-alibi" && (
           <div className="mt-3">
-            {actions?.act1?.hathimUnlocked ? (
+            {actions?.act1?.sarahUnlocked ? (
               <>
                 <div className="rounded-lg bg-surface-2 p-3">
-                  <p className="text-sm">Photograph of Hathim near the café.</p>
+                  <p className="text-sm">Photograph supposedly showing Sarah at home.</p>
                   <ul className="mt-2 type-mono text-[9px] text-text-muted space-y-1">
                     <li>metadata timestamp: 22:31</li>
                     <li>visible clock in photo: 21:48</li>
-                    <li>reflection: CRAVERY signage</li>
-                    <li>editor metadata: ARCHIVIST_NODE</li>
-                    <li>gps (recovered): CRAVERY</li>
+                    <li>location certificate: generated after photograph</li>
+                    <li>editor metadata: ARCHIVIST_RENDER_NODE</li>
+                    <li>login: two locations, impossible interval</li>
                   </ul>
                 </div>
-                <p className="mt-2 type-mono text-[9px] text-warning-gold">Open Act I → Hathim Red Herring in the investigation panel.</p>
+                <p className="mt-2 type-mono text-[9px] text-warning-gold">Open Act I → Sarah Red Herring in the investigation panel.</p>
               </>
             ) : (
               <p className="type-mono text-[9px] text-danger-red">Encrypted. Password required.</p>
@@ -532,8 +532,8 @@ function TerminalApp({ actions }) {
     if (head === "cat") {
       if (arg.includes("pungun")) {
         setLines((l) => [...l, PUNGUN_BINARY]);
-      } else if (arg.includes("hathim")) {
-        setLines((l) => [...l, "HATHIM_ALIBI.enc — encrypted. Use `unlock hathim`."]);
+      } else if (arg.includes("sarah")) {
+        setLines((l) => [...l, "SARAH_ALIBI.enc — encrypted. Use `unlock sarah`."]);
       } else if (arg.includes("ghost")) {
         setLines((l) => [...l, "ghost17.bak — signature: AMEEN. locked until final act."]);
       } else {
@@ -635,7 +635,7 @@ function LogsApp() {
     { t: "23:41:07", tag: "auth", msg: "session hijack: ARCHIVIST_NODE" },
     { t: "23:41:22", tag: "camera", msg: "front camera disabled by remote process" },
     { t: "23:42:14", tag: "notif", msg: "cleared 7 notifications (07:12..21:03)" },
-    { t: "23:43:59", tag: "gps", msg: "coordinates scrubbed from HATHIM_ALIBI.enc" },
+    { t: "23:43:59", tag: "gps", msg: "coordinates scrubbed from SARAH_ALIBI.enc" },
     { t: "23:47:11", tag: "backup", msg: "ghost17.bak reserved by GHOST_17" },
     { t: "23:52:00", tag: "net", msg: "outbound archive protocol packets: 3 failed" },
   ];

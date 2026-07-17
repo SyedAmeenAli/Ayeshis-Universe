@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "ayeshis-world-frontend",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "start", "--prefix", "C:\\Users\\Ameen\\AppData\\Local\\Temp\\claude\\C--Users-Ameen-OneDrive-Desktop-Claude-Code\\822adcb5-27e6-4961-8440-e76a11f36792\\scratchpad\\Ayeshis-World\\frontend"],
+      "port": 3001
+    }
+  ]
+}

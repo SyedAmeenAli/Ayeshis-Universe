@@ -1,5 +1,5 @@
 import React from "react";
-import { NavLink, useLocation } from "react-router-dom";
+import { Link, NavLink, useLocation } from "react-router-dom";
 import { NAV_ITEMS } from "@/lib/config";
 import { SkullBow } from "@/components/mascot/SkullBow";
 import { useProgress } from "@/stores/progressStore";
@@ -26,12 +26,12 @@ export function TopNav() {
       data-testid="top-nav"
     >
       <div className="flex items-center gap-1 px-2 py-2 rounded-full border border-white/10 bg-archive-soft/60">
-        <div className="flex items-center gap-2 pl-3 pr-4 border-r border-white/10">
+        <Link to="/home" className="flex items-center gap-2 pl-3 pr-4 border-r border-white/10" data-testid="nav-logo" data-cursor="open">
           <SkullBow size={22} mood={finalRevealUnlocked ? "anniversary" : "sleepy"} />
           <span className="type-mono text-[10px] text-text-secondary hidden lg:inline">
             ARCHIVE 1709
           </span>
-        </div>
+        </Link>
 
         {NAV_ITEMS.map((item) => (
           <NavLink

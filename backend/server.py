@@ -19,10 +19,16 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Annotated, Any, Optional
 
+import base64
+
 from bson import ObjectId
+from cryptography.fernet import Fernet
 from dotenv import load_dotenv
 from fastapi import APIRouter, Cookie, Depends, FastAPI, HTTPException, Request, Response, status
-from motor.motor_asyncio import AsyncIOMotorClient
+if os.environ.get("USE_MOCK_DB") == "1":
+    from mongomock_motor import AsyncMongoMockClient as AsyncIOMotorClient
+else:
+    from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
 from starlette.middleware.cors import CORSMiddleware
 
@@ -49,6 +55,24 @@ SESSION_SECRET = os.environ.get(
 )
 SESSION_COOKIE = "apu_session"
 SESSION_TTL_DAYS = 60
+
+STUDIO_PIN = os.environ.get("STUDIO_PIN", "AMEEN1709")
+STUDIO_COOKIE = "apu_studio_session"
+
+DIARY_PIN = os.environ.get("DIARY_PIN", "1709")
+_DIARY_KEY = base64.urlsafe_b64encode(hashlib.sha256(SESSION_SECRET.encode()).digest())
+_diary_fernet = Fernet(_DIARY_KEY)
+
+
+def encrypt_diary_body(plain: str) -> str:
+    return _diary_fernet.encrypt(plain.encode()).decode()
+
+
+def decrypt_diary_body(token: str) -> str:
+    try:
+        return _diary_fernet.decrypt(token.encode()).decode()
+    except Exception:
+        return ""
 
 # Rate-limiter (simple in-memory)
 _gateway_attempts: dict[str, list[float]] = defaultdict(list)
@@ -160,6 +184,32 @@ def verify_session_token(token: str) -> Optional[str]:
     return profile_id
 
 
+def make_studio_token() -> str:
+    rand = secrets.token_urlsafe(24)
+    sig = hmac.new(SESSION_SECRET.encode(), f"studio.{rand}".encode(), hashlib.sha256).hexdigest()
+    return f"studio.{rand}.{sig}"
+
+
+def verify_studio_token(token: str) -> bool:
+    if not token:
+        return False
+    try:
+        subject, rand, sig = token.split(".", 2)
+    except ValueError:
+        return False
+    if subject != "studio":
+        return False
+    expected = hmac.new(SESSION_SECRET.encode(), f"studio.{rand}".encode(), hashlib.sha256).hexdigest()
+    return hmac.compare_digest(expected, sig)
+
+
+async def get_studio_session(request: Request) -> dict:
+    token = request.cookies.get(STUDIO_COOKIE)
+    if not verify_studio_token(token or ""):
+        raise HTTPException(status_code=401, detail="Studio session expired or missing")
+    return {"role": "ameen_admin"}
+
+
 def touch_rate_limit(ip: str) -> bool:
     """Return False if the caller is rate limited."""
     now = time.time()
@@ -218,8 +268,89 @@ async def get_session(request: Request) -> dict:
 # ---------------------------------------------------------------------------
 # Models
 # ---------------------------------------------------------------------------
+async def get_diary_session(session: dict = Depends(get_session)) -> dict:
+    profile_id = session["profile_id"]
+    doc = await db.progress.find_one({"profile_id": profile_id}) or {}
+    if not doc.get("diary_unlocked"):
+        raise HTTPException(status_code=403, detail="diary-locked")
+    return session
+
+
 class GatewayIn(BaseModel):
     answer: str
+
+
+class DiaryUnlockIn(BaseModel):
+    pin: str
+
+
+class DiaryEntryIn(BaseModel):
+    body: str
+    mood: str
+    wants_comfort: bool = False
+    wants_no_advice: bool = False
+
+
+class DiaryEntryUpdate(BaseModel):
+    body: Optional[str] = None
+    mood: Optional[str] = None
+    wants_comfort: Optional[bool] = None
+    wants_no_advice: Optional[bool] = None
+    shared: Optional[bool] = None
+
+
+ACTIVITY_TYPES = [
+    "sushi_date", "long_drive", "cafe_date", "movie", "study_date",
+    "home_call", "orr_drive", "surprise_me", "just_you", "custom",
+]
+SLOT_STATUSES = {"available", "maybe", "busy", "surprise"}
+
+
+class SlotCreateIn(BaseModel):
+    date: str  # YYYY-MM-DD
+    time_label: str
+    status: str = "available"
+    activity_hint: str = ""
+
+
+class SlotUpdateIn(BaseModel):
+    status: Optional[str] = None
+    activity_hint: Optional[str] = None
+
+
+class BookingIn(BaseModel):
+    activity: str
+    note: str = ""
+    mood: str = ""
+
+
+class StudioLoginIn(BaseModel):
+    pin: str
+
+
+DEFAULT_FEATURE_FLAGS = {
+    "our_song_enabled": True,
+    "wreck_room_enabled": True,
+    "safe_space_enabled": True,
+    "calendar_enabled": True,
+    "final_reveal_enabled": True,
+}
+
+
+class FeatureFlagsIn(BaseModel):
+    our_song_enabled: Optional[bool] = None
+    wreck_room_enabled: Optional[bool] = None
+    safe_space_enabled: Optional[bool] = None
+    calendar_enabled: Optional[bool] = None
+    final_reveal_enabled: Optional[bool] = None
+
+
+class QuizQuestionUpdate(BaseModel):
+    question: Optional[str] = None
+    answers: Optional[list] = None
+    correct_answer_id: Optional[str] = None
+    explanation: Optional[str] = None
+    enabled: Optional[bool] = None
 
 
 class GatewayOut(BaseModel):
@@ -242,6 +373,18 @@ class StoryPositionIn(BaseModel):
 
 class MemoryFavoriteIn(BaseModel):
     favourite: bool
+
+
+class GalleryReactionIn(BaseModel):
+    favourite: Optional[bool] = None
+    rating: Optional[str] = None
+
+
+AMEEN_RATING_OPTIONS = {"cute", "handsome", "baby_boy", "remove_immediately", "certified_potty"}
+
+
+class SaveMomentIn(BaseModel):
+    caption: str = ""
 
 
 # ---------------------------------------------------------------------------
@@ -474,6 +617,27 @@ async def ensure_seed() -> None:
             docs.append(doc)
         await db.memories.insert_many(docs)
         log.info("Seeded %d memories", len(docs))
+
+
+async def ensure_seed_calendar() -> None:
+    count = await db.availability_slots.count_documents({})
+    if count > 0:
+        return
+    statuses = ["available", "available", "maybe", "busy", "available", "surprise", "available"]
+    docs = []
+    for i in range(14):
+        d = (now_utc() + timedelta(days=i + 1)).date().isoformat()
+        docs.append({
+            "date": d,
+            "time_label": "19:30",
+            "status": statuses[i % len(statuses)],
+            "activity_hint": "",
+            "created_by": "ameen",
+            "created_at": now_utc().isoformat(),
+            "updated_at": now_utc().isoformat(),
+        })
+    await db.availability_slots.insert_many(docs)
+    log.info("Seeded %d availability slots", len(docs))
 
 
 # ---------------------------------------------------------------------------
@@ -723,6 +887,388 @@ async def toggle_memory_favourite(
         upsert=True,
     )
     return {"favourite": payload.favourite}
+
+
+# ---------------------------- Galleries (Ayesha / Ameen) ----------------------------
+@api.get("/gallery/{gallery}")
+async def get_gallery_reactions(gallery: str, session: dict = Depends(get_session)):
+    if gallery not in ("ayesha", "ameen"):
+        raise HTTPException(status_code=404, detail="unknown-gallery")
+    profile_id = session["profile_id"]
+    doc = await db.gallery_reactions.find_one({"profile_id": profile_id, "gallery": gallery}) or {}
+    return doc.get("items", {})
+
+
+@api.post("/gallery/{gallery}/{item_id}/react")
+async def react_to_gallery_item(
+    gallery: str, item_id: str, payload: GalleryReactionIn, session: dict = Depends(get_session)
+):
+    if gallery not in ("ayesha", "ameen"):
+        raise HTTPException(status_code=404, detail="unknown-gallery")
+    if payload.rating is not None and payload.rating not in AMEEN_RATING_OPTIONS:
+        raise HTTPException(status_code=400, detail="invalid-rating")
+    profile_id = session["profile_id"]
+    doc = await db.gallery_reactions.find_one({"profile_id": profile_id, "gallery": gallery}) or {}
+    items = doc.get("items", {})
+    entry = items.get(item_id, {})
+    if payload.favourite is not None:
+        entry["favourite"] = payload.favourite
+    if payload.rating is not None:
+        entry["rating"] = payload.rating
+    items[item_id] = entry
+    await db.gallery_reactions.update_one(
+        {"profile_id": profile_id, "gallery": gallery},
+        {"$set": {"items": items, "updated_at": now_utc().isoformat()}},
+        upsert=True,
+    )
+    return entry
+
+
+@api.post("/our-song/save-moment")
+async def save_our_song_moment(payload: SaveMomentIn, session: dict = Depends(get_session)):
+    slug = f"our-song-moment-{secrets.token_hex(4)}"
+    doc = {
+        "slug": slug,
+        "title": "A Moment From Our Song",
+        "short_caption": payload.caption or "Saved while listening to our song.",
+        "body": payload.caption or "A moment saved while listening to our song together.",
+        "memory_date": now_utc().date().isoformat(),
+        "date_precision": "day",
+        "location_label": "",
+        "category": "saved_song_moments",
+        "tags": ["our-song", "saved"],
+        "cover_asset": {
+            "asset_id": f"SONG-MOMENT-{secrets.token_hex(3)}",
+            "type": "photograph",
+            "orientation": "portrait",
+            "resolution": "1600 × 2000 px",
+            "aspect": "4:5",
+            "content_needed": "The moment you were listening to when you saved this.",
+            "filename": f"{slug}.webp",
+        },
+        "published": True,
+        "sort_index": 999,
+        "created_at": now_utc().isoformat(),
+        "updated_at": now_utc().isoformat(),
+    }
+    result = await db.memories.insert_one(doc)
+    doc["_id"] = result.inserted_id
+    return memory_to_public(doc)
+
+
+# ---------------------------- Studio (Ameen's private admin) ----------------------------
+@api.post("/studio/login")
+async def studio_login(payload: StudioLoginIn, response: Response):
+    if not hmac.compare_digest(payload.pin.strip(), STUDIO_PIN):
+        raise HTTPException(status_code=401, detail="wrong-pin")
+    token = make_studio_token()
+    response.set_cookie(
+        key=STUDIO_COOKIE,
+        value=token,
+        httponly=True,
+        secure=True,
+        samesite="none",
+        max_age=SESSION_TTL_DAYS * 24 * 3600,
+        path="/",
+    )
+    return {"ok": True}
+
+
+@api.post("/studio/logout")
+async def studio_logout(response: Response):
+    response.delete_cookie(STUDIO_COOKIE, path="/")
+    return {"ok": True}
+
+
+@api.get("/studio/me")
+async def studio_me(session: dict = Depends(get_studio_session)):
+    return session
+
+
+@api.get("/studio/dashboard")
+async def studio_dashboard(session: dict = Depends(get_studio_session)):
+    memories_count = await db.memories.count_documents({})
+    bookings_count = await db.bookings.count_documents({"status": "confirmed"})
+    diary_count = await db.diary_entries.count_documents({})
+    achievements_count = await db.game_achievements.count_documents({})
+    progress_doc = await db.progress.find_one({"profile_id": "ayesha"}) or {}
+    return {
+        "memories_count": memories_count,
+        "upcoming_bookings": bookings_count,
+        "diary_entries": diary_count,
+        "achievements_unlocked": achievements_count,
+        "final_reveal_unlocked": progress_doc.get("final_reveal_unlocked", False),
+        "final_reveal_viewed": progress_doc.get("final_reveal_viewed", False),
+        "hidden_scroll_found": progress_doc.get("hidden_scroll_found", False),
+        "real_photos_configured": 23,
+    }
+
+
+@api.get("/studio/feature-flags")
+async def get_feature_flags():
+    doc = await db.settings.find_one({"key": "feature_flags"})
+    flags = dict(DEFAULT_FEATURE_FLAGS)
+    if doc:
+        flags.update(doc.get("value", {}))
+    return flags
+
+
+@api.put("/studio/feature-flags")
+async def update_feature_flags(payload: FeatureFlagsIn, session: dict = Depends(get_studio_session)):
+    doc = await db.settings.find_one({"key": "feature_flags"})
+    flags = dict(DEFAULT_FEATURE_FLAGS)
+    if doc:
+        flags.update(doc.get("value", {}))
+    updates = {k: v for k, v in payload.model_dump().items() if v is not None}
+    flags.update(updates)
+    await db.settings.update_one(
+        {"key": "feature_flags"}, {"$set": {"value": flags, "updated_at": now_utc().isoformat()}}, upsert=True
+    )
+    return flags
+
+
+@api.get("/studio/quiz/questions")
+async def studio_list_quiz(session: dict = Depends(get_studio_session)):
+    docs = await db.quiz_questions.find({}).sort("sort_order", 1).to_list(200)
+    return [
+        {
+            "question_key": d.get("question_key"),
+            "question": d.get("question"),
+            "answers": d.get("answers", []),
+            "correct_answer_id": d.get("correct_answer_id"),
+            "explanation": d.get("explanation"),
+            "enabled": d.get("enabled", True),
+        }
+        for d in docs
+    ]
+
+
+@api.put("/studio/quiz/questions/{question_key}")
+async def studio_update_quiz(question_key: str, payload: QuizQuestionUpdate, session: dict = Depends(get_studio_session)):
+    doc = await db.quiz_questions.find_one({"question_key": question_key})
+    if not doc:
+        raise HTTPException(status_code=404, detail="question-not-found")
+    updates = {k: v for k, v in payload.model_dump().items() if v is not None}
+    if updates:
+        await db.quiz_questions.update_one({"_id": doc["_id"]}, {"$set": updates})
+    doc.update(updates)
+    return {
+        "question_key": doc.get("question_key"),
+        "question": doc.get("question"),
+        "answers": doc.get("answers", []),
+        "correct_answer_id": doc.get("correct_answer_id"),
+        "explanation": doc.get("explanation"),
+        "enabled": doc.get("enabled", True),
+    }
+
+
+# ---------------------------- Calendar / booking ----------------------------
+def slot_to_public(doc: dict, booking: dict | None) -> dict:
+    return {
+        "id": str(doc.get("_id")),
+        "date": doc.get("date"),
+        "time_label": doc.get("time_label"),
+        "status": doc.get("status"),
+        "activity_hint": doc.get("activity_hint", ""),
+        "booking": booking_to_public(booking) if booking else None,
+    }
+
+
+def booking_to_public(doc: dict) -> dict:
+    return {
+        "id": str(doc.get("_id")),
+        "slot_id": str(doc.get("slot_id")),
+        "activity": doc.get("activity"),
+        "note": doc.get("note", ""),
+        "mood": doc.get("mood", ""),
+        "status": doc.get("status"),
+        "created_at": doc.get("created_at"),
+    }
+
+
+@api.get("/calendar/activity-types")
+async def get_activity_types():
+    return ACTIVITY_TYPES
+
+
+@api.get("/calendar/slots")
+async def list_calendar_slots(session: dict = Depends(get_session)):
+    slots = await db.availability_slots.find({}).sort("date", 1).to_list(500)
+    slot_ids = [s["_id"] for s in slots]
+    bookings = await db.bookings.find({"slot_id": {"$in": slot_ids}, "status": {"$ne": "cancelled"}}).to_list(500)
+    bookings_by_slot = {b["slot_id"]: b for b in bookings}
+    return [slot_to_public(s, bookings_by_slot.get(s["_id"])) for s in slots]
+
+
+@api.post("/calendar/slots/{slot_id}/book")
+async def book_slot(slot_id: str, payload: BookingIn, session: dict = Depends(get_session)):
+    slot = await db.availability_slots.find_one({"_id": ObjectId(slot_id)})
+    if not slot:
+        raise HTTPException(status_code=404, detail="slot-not-found")
+    if slot.get("status") not in ("available", "surprise", "maybe"):
+        raise HTTPException(status_code=409, detail="slot-not-bookable")
+    if payload.activity not in ACTIVITY_TYPES:
+        raise HTTPException(status_code=400, detail="invalid-activity")
+
+    booking_doc = {
+        "slot_id": slot["_id"],
+        "profile_id": session["profile_id"],
+        "activity": payload.activity,
+        "note": payload.note,
+        "mood": payload.mood,
+        "status": "confirmed",
+        "created_at": now_utc().isoformat(),
+    }
+    result = await db.bookings.insert_one(booking_doc)
+    booking_doc["_id"] = result.inserted_id
+    await db.availability_slots.update_one(
+        {"_id": slot["_id"]}, {"$set": {"status": "busy", "updated_at": now_utc().isoformat()}}
+    )
+    slot["status"] = "busy"
+    return slot_to_public(slot, booking_doc)
+
+
+@api.post("/calendar/bookings/{booking_id}/cancel")
+async def cancel_booking(booking_id: str, session: dict = Depends(get_session)):
+    booking = await db.bookings.find_one({"_id": ObjectId(booking_id)})
+    if not booking:
+        raise HTTPException(status_code=404, detail="booking-not-found")
+    await db.bookings.update_one({"_id": booking["_id"]}, {"$set": {"status": "cancelled"}})
+    await db.availability_slots.update_one(
+        {"_id": booking["slot_id"]}, {"$set": {"status": "available", "updated_at": now_utc().isoformat()}}
+    )
+    return {"ok": True}
+
+
+@api.post("/calendar/slots")
+async def create_slot(payload: SlotCreateIn, session: dict = Depends(get_studio_session)):
+    if payload.status not in SLOT_STATUSES:
+        raise HTTPException(status_code=400, detail="invalid-status")
+    doc = {
+        "date": payload.date,
+        "time_label": payload.time_label,
+        "status": payload.status,
+        "activity_hint": payload.activity_hint,
+        "created_by": "ameen",
+        "created_at": now_utc().isoformat(),
+        "updated_at": now_utc().isoformat(),
+    }
+    result = await db.availability_slots.insert_one(doc)
+    doc["_id"] = result.inserted_id
+    return slot_to_public(doc, None)
+
+
+@api.put("/calendar/slots/{slot_id}")
+async def update_slot(slot_id: str, payload: SlotUpdateIn, session: dict = Depends(get_studio_session)):
+    slot = await db.availability_slots.find_one({"_id": ObjectId(slot_id)})
+    if not slot:
+        raise HTTPException(status_code=404, detail="slot-not-found")
+    updates = {"updated_at": now_utc().isoformat()}
+    if payload.status is not None:
+        if payload.status not in SLOT_STATUSES:
+            raise HTTPException(status_code=400, detail="invalid-status")
+        updates["status"] = payload.status
+    if payload.activity_hint is not None:
+        updates["activity_hint"] = payload.activity_hint
+    await db.availability_slots.update_one({"_id": slot["_id"]}, {"$set": updates})
+    slot.update(updates)
+    return slot_to_public(slot, None)
+
+
+# ---------------------------- Safe Space (diary) ----------------------------
+def diary_entry_to_public(doc: dict) -> dict:
+    return {
+        "id": str(doc.get("_id")),
+        "body": decrypt_diary_body(doc.get("body_encrypted", "")),
+        "mood": doc.get("mood"),
+        "wants_comfort": doc.get("wants_comfort", False),
+        "wants_no_advice": doc.get("wants_no_advice", False),
+        "shared": doc.get("shared", False),
+        "created_at": doc.get("created_at"),
+        "updated_at": doc.get("updated_at"),
+    }
+
+
+@api.get("/diary/status")
+async def diary_status(session: dict = Depends(get_session)):
+    doc = await db.progress.find_one({"profile_id": session["profile_id"]}) or {}
+    return {"unlocked": bool(doc.get("diary_unlocked"))}
+
+
+@api.post("/diary/unlock")
+async def diary_unlock(payload: DiaryUnlockIn, session: dict = Depends(get_session)):
+    if not hmac.compare_digest(payload.pin.strip(), DIARY_PIN):
+        raise HTTPException(status_code=401, detail="wrong-pin")
+    await db.progress.update_one(
+        {"profile_id": session["profile_id"]},
+        {"$set": {"diary_unlocked": True, "updated_at": now_utc().isoformat()}},
+        upsert=True,
+    )
+    return {"unlocked": True}
+
+
+@api.get("/diary/entries")
+async def list_diary_entries(session: dict = Depends(get_diary_session)):
+    docs = await db.diary_entries.find({"profile_id": session["profile_id"]}).sort("created_at", -1).to_list(500)
+    return [diary_entry_to_public(d) for d in docs]
+
+
+@api.post("/diary/entries")
+async def create_diary_entry(payload: DiaryEntryIn, session: dict = Depends(get_diary_session)):
+    doc = {
+        "profile_id": session["profile_id"],
+        "body_encrypted": encrypt_diary_body(payload.body),
+        "mood": payload.mood,
+        "wants_comfort": payload.wants_comfort,
+        "wants_no_advice": payload.wants_no_advice,
+        "shared": False,
+        "created_at": now_utc().isoformat(),
+        "updated_at": now_utc().isoformat(),
+    }
+    result = await db.diary_entries.insert_one(doc)
+    doc["_id"] = result.inserted_id
+    return diary_entry_to_public(doc)
+
+
+@api.put("/diary/entries/{entry_id}")
+async def update_diary_entry(entry_id: str, payload: DiaryEntryUpdate, session: dict = Depends(get_diary_session)):
+    doc = await db.diary_entries.find_one({"_id": ObjectId(entry_id), "profile_id": session["profile_id"]})
+    if not doc:
+        raise HTTPException(status_code=404, detail="entry-not-found")
+    updates = {"updated_at": now_utc().isoformat()}
+    if payload.body is not None:
+        updates["body_encrypted"] = encrypt_diary_body(payload.body)
+    if payload.mood is not None:
+        updates["mood"] = payload.mood
+    if payload.wants_comfort is not None:
+        updates["wants_comfort"] = payload.wants_comfort
+    if payload.wants_no_advice is not None:
+        updates["wants_no_advice"] = payload.wants_no_advice
+    if payload.shared is not None:
+        updates["shared"] = payload.shared
+    await db.diary_entries.update_one({"_id": doc["_id"]}, {"$set": updates})
+    doc.update(updates)
+    return diary_entry_to_public(doc)
+
+
+@api.delete("/diary/entries/{entry_id}")
+async def delete_diary_entry(entry_id: str, session: dict = Depends(get_diary_session)):
+    result = await db.diary_entries.delete_one({"_id": ObjectId(entry_id), "profile_id": session["profile_id"]})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="entry-not-found")
+    return {"ok": True}
+
+
+@api.get("/gallery/ameen/stats")
+async def get_ameen_gallery_stats(session: dict = Depends(get_session)):
+    profile_id = session["profile_id"]
+    doc = await db.gallery_reactions.find_one({"profile_id": profile_id, "gallery": "ameen"}) or {}
+    counts = {k: 0 for k in AMEEN_RATING_OPTIONS}
+    for entry in doc.get("items", {}).values():
+        r = entry.get("rating")
+        if r in counts:
+            counts[r] += 1
+    return counts
 
 
 # ---------------------------------------------------------------------------
@@ -1073,10 +1619,11 @@ async def case_content(session: dict = Depends(get_session)):
 QUIZ_SEED = [
     {"question_key": "q-nonchalant", "question": "What did Ameen sacrifice while trying to look nonchalant?", "answers": [{"id": "a", "label": "His phone"}, {"id": "b", "label": "His right hand and dignity"}, {"id": "c", "label": "His car key"}, {"id": "d", "label": "His coffee"}], "correct_answer_id": "b", "explanation": "The lift did not respect the performance.", "reaction_correct": "She remembers!", "reaction_wrong": "Suspicious.", "enabled": True, "sort_order": 1},
     {"question_key": "q-phrase", "question": "What phrase can explain almost any situation?", "answers": [{"id": "a", "label": "It is what it is"}, {"id": "b", "label": "Hum toh aise hi hai"}, {"id": "c", "label": "Meku bhook lagri"}, {"id": "d", "label": "Ask ChatGPT"}], "correct_answer_id": "b", "explanation": "The behavioural checksum.", "reaction_correct": "Certified Ayeshi behavior.", "reaction_wrong": "Girlfriend verification delayed.", "enabled": True, "sort_order": 2},
-    {"question_key": "q-hathim", "question": "Who possesses the highest known concentration of potty?", "answers": [{"id": "a", "label": "Ameen"}, {"id": "b", "label": "Ayesha"}, {"id": "c", "label": "Hathim"}, {"id": "d", "label": "The Archivist"}], "correct_answer_id": "c", "explanation": "Beyond scientific measurement.", "reaction_correct": "Correct. Disturbingly.", "reaction_wrong": "Hathim may have answered this.", "enabled": True, "sort_order": 3},
-    {"question_key": "q-ringtone", "question": "Which word should never become a public ringtone?", "answers": [{"id": "a", "label": "Pungun"}, {"id": "b", "label": "Hathim"}, {"id": "c", "label": "Sushi"}, {"id": "d", "label": "Ayeshi"}], "correct_answer_id": "a", "explanation": "A family word, weaponised.", "reaction_correct": "Disturbingly accurate.", "reaction_wrong": "Baby, think again.", "enabled": True, "sort_order": 4},
+    {"question_key": "q-potty", "question": "What is our most intellectually advanced insult?", "answers": [{"id": "a", "label": "Potty"}, {"id": "b", "label": "Silence"}, {"id": "c", "label": "Hum toh aise hi hai"}, {"id": "d", "label": "Pungun"}], "correct_answer_id": "a", "explanation": "Beyond scientific measurement.", "reaction_correct": "Correct. Disturbingly.", "reaction_wrong": "Certified potty behaviour, but wrong.", "enabled": True, "sort_order": 3},
+    {"question_key": "q-ringtone", "question": "Which word should never become a public ringtone?", "answers": [{"id": "a", "label": "Pungun"}, {"id": "b", "label": "Chota Koko"}, {"id": "c", "label": "Sushi"}, {"id": "d", "label": "Ayeshi"}], "correct_answer_id": "a", "explanation": "A family word, weaponised.", "reaction_correct": "Disturbingly accurate.", "reaction_wrong": "Baby, think again.", "enabled": True, "sort_order": 4},
+    {"question_key": "q-password", "question": "Which word should never have become an encrypted password?", "answers": [{"id": "a", "label": "Tulip"}, {"id": "b", "label": "Cravery"}, {"id": "c", "label": "Potty"}, {"id": "d", "label": "Sushi"}], "correct_answer_id": "c", "explanation": "Ameen's cybersecurity standards are deeply concerning.", "reaction_correct": "Correct. Disturbingly.", "reaction_wrong": "Baby, think again.", "enabled": True, "sort_order": 4.5},
     {"question_key": "q-confession", "question": "What happened when Ayesha accidentally said 'I love you'?", "answers": [{"id": "a", "label": "She said it again on purpose"}, {"id": "b", "label": "She immediately acted as though it never happened"}, {"id": "c", "label": "She sent a voice note apologising"}, {"id": "d", "label": "She blamed autocorrect"}], "correct_answer_id": "b", "explanation": "Ayesha denies all allegations.", "reaction_correct": "She knows too much.", "reaction_wrong": "Girlfriend verification delayed.", "enabled": True, "sort_order": 5},
-    {"question_key": "q-ball", "question": "What was Ameen's official reaction to the ball incident?", "answers": [{"id": "a", "label": "Laughed it off"}, {"id": "b", "label": "Sent a photo to Hathim"}, {"id": "c", "label": "Collapse, cry and document the tragedy forever"}, {"id": "d", "label": "Filed a police report"}], "correct_answer_id": "c", "explanation": "The male body is fragile.", "reaction_correct": "Certified Ayeshi behavior.", "reaction_wrong": "Baby, think again.", "enabled": True, "sort_order": 6},
+    {"question_key": "q-ball", "question": "What was Ameen's official reaction to the ball incident?", "answers": [{"id": "a", "label": "Laughed it off"}, {"id": "b", "label": "Sent a photo to Sarah"}, {"id": "c", "label": "Collapse, cry and document the tragedy forever"}, {"id": "d", "label": "Filed a police report"}], "correct_answer_id": "c", "explanation": "The male body is fragile.", "reaction_correct": "Certified Ayeshi behavior.", "reaction_wrong": "Baby, think again.", "enabled": True, "sort_order": 6},
     {"question_key": "q-sushi-demand", "question": "What food can Ayesha officially demand after winning Sushi Stack?", "answers": [{"id": "a", "label": "Biryani"}, {"id": "b", "label": "Sushi"}, {"id": "c", "label": "Ice cream"}, {"id": "d", "label": "Cravery lattes"}], "correct_answer_id": "b", "explanation": "Architectural excellence earns rolls.", "reaction_correct": "Sushi is a promise.", "reaction_wrong": "Suspicious.", "enabled": True, "sort_order": 7},
     {"question_key": "q-beginning", "question": "What was the beginning date?", "answers": [{"id": "a", "label": "17 September 2025"}, {"id": "b", "label": "25 September 2025"}, {"id": "c", "label": "11 October 2025"}, {"id": "d", "label": "12 December 2025"}], "correct_answer_id": "a", "explanation": "The Wednesday.", "reaction_correct": "She remembers.", "reaction_wrong": "Baby, that's the wrong password too.", "enabled": True, "sort_order": 8},
     {"question_key": "q-first-kiss", "question": "What was the first-kiss date?", "answers": [{"id": "a", "label": "17 September 2025"}, {"id": "b", "label": "25 September 2025"}, {"id": "c", "label": "11 October 2025"}, {"id": "d", "label": "14 February 2026"}], "correct_answer_id": "c", "explanation": "October 11 — the geometry of us changed.", "reaction_correct": "Certified.", "reaction_wrong": "Girlfriend trial version.", "enabled": True, "sort_order": 9},
@@ -1121,6 +1668,7 @@ async def ensure_quiz_seed() -> None:
 async def on_startup():
     await ensure_seed()
     await ensure_quiz_seed()
+    await ensure_seed_calendar()
     # Unique index on (profile_id, game_key)
     try:
         await db.game_saves.create_index(

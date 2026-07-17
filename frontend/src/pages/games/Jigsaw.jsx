@@ -4,11 +4,15 @@ import { GameShell, CompletionScreen } from "@/components/games/GameShell";
 import { MagneticButton } from "@/components/motion/MagneticButton";
 import { fetchGameSave, completeGame, startGame, putGameSave } from "@/lib/gamesApi";
 import { useGameSave } from "@/hooks/useGameSave";
+import { photoForAssetId } from "@/lib/realAssets";
 
 /**
- * Us, But Broken — a real SVG jigsaw with three difficulties.
- * Pieces have interlocking tab/blank edges rendered via SVG paths.
+ * Us, But Broken — a real jigsaw with three difficulties. Pieces are sliced
+ * from an actual couple photo via CSS background-position, not colored
+ * placeholder blocks.
  */
+
+const JIGSAW_PHOTO = photoForAssetId("JIGSAW-COUPLE-PHOTO");
 
 const DIFFICULTIES = {
   "cute-baby": { key: "cute-baby", label: "Cute Baby", cols: 4, rows: 3, rotate: false, outline: true, snap: 32 },
@@ -18,7 +22,7 @@ const DIFFICULTIES = {
 
 const BOARD_W = 720;
 const BOARD_H = 480;
-const TRAY_ROWS = 3;
+const TRAY_GAP = 24;
 
 export default function Jigsaw() {
   const [status, setStatus] = useState("choose"); // choose | playing | completed
@@ -76,19 +80,25 @@ export default function Jigsaw() {
 
   function startNew(diffKey) {
     const c = DIFFICULTIES[diffKey];
+    const pW = BOARD_W / c.cols;
+    const pH = BOARD_H / c.rows;
     const list = [];
     for (let r = 0; r < c.rows; r++) {
       for (let cIdx = 0; cIdx < c.cols; cIdx++) {
         const id = `${r}-${cIdx}`;
-        // scramble to tray
-        const trayCol = list.length % c.cols;
-        const trayRow = TRAY_ROWS + Math.floor(list.length / c.cols);
+        // Scramble into a tray directly below the board, sized to the same
+        // grid — this always fits inside the container regardless of
+        // difficulty, unlike the old fixed side-tray math which overflowed
+        // past the visible/interactive area for anything above 4x3.
+        const idx = list.length;
+        const trayCol = idx % c.cols;
+        const trayRow = Math.floor(idx / c.cols);
         list.push({
           id,
           r,
           c: cIdx,
-          x: BOARD_W + 40 + trayCol * (BOARD_W / c.cols) * 0.8,
-          y: 20 + trayRow * (BOARD_H / c.rows) * 0.8,
+          x: trayCol * pW,
+          y: BOARD_H + TRAY_GAP + trayRow * pH,
           rotation: c.rotate ? Math.floor(Math.random() * 4) * 90 : 0,
           placed: false,
         });
@@ -165,7 +175,7 @@ export default function Jigsaw() {
   function onPointerDown(id, e) {
     const el = boardRef.current;
     if (!el) return;
-    const scale = el.getBoundingClientRect().width / (BOARD_W + 500);
+    const scale = el.getBoundingClientRect().width / BOARD_W;
     const startX = e.clientX;
     const startY = e.clientY;
     setSelectedId(id);
@@ -317,57 +327,52 @@ function PlayBoard({ boardRef, cfg, pieces, selectedId, onPointerDown, onTap, on
       <div
         ref={boardRef}
         className="relative w-full rounded-2xl border border-white/10 bg-surface-1 overflow-hidden touch-none select-none"
-        style={{ aspectRatio: `${(BOARD_W + 500) / BOARD_H}` }}
+        style={{ aspectRatio: `${BOARD_W / (BOARD_H * 2 + TRAY_GAP)}` }}
         data-testid="jigsaw-board"
       >
-        <div
-          className="absolute"
-          style={{
-            width: `${((BOARD_W + 500) / (BOARD_W + 500)) * 100}%`,
-            height: "100%",
-            transform: `scale(${1})`,
-          }}
-        >
-          {/* Board grid */}
-          <div
-            className="absolute"
-            style={{ left: 0, top: 0, width: BOARD_W, height: BOARD_H }}
-          >
-            {showOutline && (
-              <svg width={BOARD_W} height={BOARD_H} className="absolute inset-0 pointer-events-none">
-                {Array.from({ length: cfg.cols + 1 }).map((_, i) => (
-                  <line key={`v${i}`} x1={i * pieceW} y1={0} x2={i * pieceW} y2={BOARD_H} stroke="rgba(184,156,255,0.15)" strokeDasharray="4 6" />
-                ))}
-                {Array.from({ length: cfg.rows + 1 }).map((_, i) => (
-                  <line key={`h${i}`} x1={0} y1={i * pieceH} x2={BOARD_W} y2={i * pieceH} stroke="rgba(184,156,255,0.15)" strokeDasharray="4 6" />
-                ))}
-              </svg>
-            )}
-            <div className="absolute inset-0 border border-lavender/30 rounded-md" />
-            <span className="absolute bottom-2 right-2 type-mono text-[8px] text-lavender/50">JIGSAW BOARD</span>
-          </div>
-
-          {/* Tray label */}
-          <div
-            className="absolute pointer-events-none"
-            style={{ left: BOARD_W + 20, top: 10 }}
-          >
-            <span className="type-mono text-[9px] text-text-muted">TRAY</span>
-          </div>
-
-          {/* Pieces */}
-          {pieces.map((p) => (
-            <PieceRect
-              key={p.id}
-              piece={p}
-              pieceW={pieceW}
-              pieceH={pieceH}
-              selected={selectedId === p.id}
-              onPointerDown={(e) => onPointerDown(p.id, e)}
-              onClick={() => onTap(p.id)}
+        {/* Board zone */}
+        <div className="absolute" style={{ left: 0, top: 0, width: BOARD_W, height: BOARD_H }}>
+          {showOutline && JIGSAW_PHOTO && (
+            <img
+              src={JIGSAW_PHOTO}
+              alt=""
+              className="absolute inset-0 w-full h-full object-cover opacity-20 pointer-events-none"
             />
-          ))}
+          )}
+          {showOutline && (
+            <svg width={BOARD_W} height={BOARD_H} className="absolute inset-0 pointer-events-none">
+              {Array.from({ length: cfg.cols + 1 }).map((_, i) => (
+                <line key={`v${i}`} x1={i * pieceW} y1={0} x2={i * pieceW} y2={BOARD_H} stroke="rgba(184,156,255,0.25)" strokeDasharray="4 6" />
+              ))}
+              {Array.from({ length: cfg.rows + 1 }).map((_, i) => (
+                <line key={`h${i}`} x1={0} y1={i * pieceH} x2={BOARD_W} y2={i * pieceH} stroke="rgba(184,156,255,0.25)" strokeDasharray="4 6" />
+              ))}
+            </svg>
+          )}
+          <div className="absolute inset-0 border border-lavender/30 rounded-md" />
+          <span className="absolute bottom-2 right-2 type-mono text-[8px] text-lavender/50">JIGSAW BOARD</span>
         </div>
+
+        {/* Tray zone — directly below the board, same width, always in bounds */}
+        <div
+          className="absolute border-t border-dashed border-white/10"
+          style={{ left: 0, top: BOARD_H + TRAY_GAP / 2, width: BOARD_W, height: BOARD_H + TRAY_GAP / 2 }}
+        >
+          <span className="absolute -top-2 left-2 bg-surface-1 px-2 type-mono text-[9px] text-text-muted">TRAY</span>
+        </div>
+
+        {/* Pieces */}
+        {pieces.map((p) => (
+          <PieceRect
+            key={p.id}
+            piece={p}
+            pieceW={pieceW}
+            pieceH={pieceH}
+            selected={selectedId === p.id}
+            onPointerDown={(e) => onPointerDown(p.id, e)}
+            onClick={() => onTap(p.id)}
+          />
+        ))}
       </div>
     </div>
   );
@@ -375,21 +380,24 @@ function PlayBoard({ boardRef, cfg, pieces, selectedId, onPointerDown, onTap, on
 
 function PieceRect({ piece, pieceW, pieceH, selected, onPointerDown, onClick }) {
   const { r, c, x, y, rotation, placed } = piece;
-  // Deterministic hue per (r,c) for a satisfying gradient jigsaw look
-  const hue = (r * 47 + c * 83) % 360;
-  const bg1 = `hsl(${hue}, 55%, 62%)`;
-  const bg2 = `hsl(${(hue + 30) % 360}, 45%, 40%)`;
+  const bgStyle = JIGSAW_PHOTO
+    ? {
+        backgroundImage: `url(${JIGSAW_PHOTO})`,
+        backgroundSize: `${BOARD_W}px ${BOARD_H}px`,
+        backgroundPosition: `-${c * pieceW}px -${r * pieceH}px`,
+      }
+    : { background: `hsl(${(r * 47 + c * 83) % 360}, 50%, 45%)` };
   return (
     <div
       onPointerDown={(e) => { e.preventDefault(); onPointerDown(e); }}
       onClick={onClick}
-      className={`absolute rounded-lg shadow-lg cursor-grab active:cursor-grabbing transition-shadow ${selected ? "ring-2 ring-lavender" : ""} ${placed ? "opacity-95" : ""}`}
+      className={`absolute rounded-md shadow-lg cursor-grab active:cursor-grabbing transition-shadow ${selected ? "ring-2 ring-lavender" : ""} ${placed ? "opacity-100" : "opacity-95"}`}
       style={{
         left: x,
         top: y,
         width: pieceW,
         height: pieceH,
-        background: `linear-gradient(140deg, ${bg1}, ${bg2})`,
+        ...bgStyle,
         transform: `rotate(${rotation}deg)`,
         transformOrigin: "center",
         boxShadow: selected ? "0 0 0 2px rgba(184,156,255,0.6), 0 10px 30px rgba(0,0,0,0.4)" : "0 6px 18px rgba(0,0,0,0.35)",
@@ -398,11 +406,7 @@ function PieceRect({ piece, pieceW, pieceH, selected, onPointerDown, onClick }) 
       }}
       data-testid={`jigsaw-piece-${piece.id}`}
     >
-      {/* Tab decoration */}
-      <div className="absolute inset-1 rounded-md" style={{ boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.12)" }} />
-      <span className="absolute bottom-1 right-1 type-mono text-[8px] text-white/60">
-        {r + 1}·{c + 1}
-      </span>
+      <div className="absolute inset-0 rounded-md" style={{ boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.25)" }} />
     </div>
   );
 }

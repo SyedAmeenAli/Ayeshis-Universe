@@ -154,28 +154,21 @@ export default function TenMonths() {
       <section className="px-6 md:px-14 py-16">
         <div className="grid md:grid-cols-12 gap-6 items-center">
           <div className="md:col-span-6">
-            <span className="type-mono text-[10px] text-text-muted">VOICE LETTER · PLACEHOLDER</span>
+            <span className="type-mono text-[10px] text-lavender">VOICE LETTER</span>
             <h2 className="mt-3 font-editorial text-3xl md:text-5xl leading-tight">
               A voice, when text is not enough.
             </h2>
             <p className="mt-4 text-base text-text-secondary max-w-lg font-editorial">
-              This slot holds an anniversary voice letter. Ameen will drop the file here.
-              Until then, this is a considered pause — not a missing feature.
+              A voice note from Ameen, for when reading isn't quite enough.
             </p>
           </div>
           <div className="md:col-span-6">
-            <AssetPlaceholder
-              asset={{
-                id: "TEN-VOICE-LETTER",
-                type: "audio",
-                orientation: "landscape",
-                resolution: "≤ 25 MB · m4a/mp3",
-                aspect: "16:9",
-                purpose: "Personal anniversary voice letter from Ameen",
-                filename: "ten-months-voice-letter.mp3",
-              }}
-              aspect="16/9"
-            />
+            <div className="rounded-2xl border border-white/10 bg-surface-1 p-6 flex items-center gap-4">
+              <SkullBow size={36} mood="anniversary" />
+              <audio controls preload="none" className="flex-1" data-testid="ten-voice-letter">
+                <source src="/assets/final/love-message.ogg" type="audio/ogg" />
+              </audio>
+            </div>
           </div>
         </div>
       </section>
@@ -184,27 +177,25 @@ export default function TenMonths() {
       <section className="px-6 md:px-14 py-16">
         <div className="grid md:grid-cols-12 gap-6 items-center">
           <div className="md:col-span-6 md:order-2">
-            <span className="type-mono text-[10px] text-text-muted">VIDEO MESSAGE · PLACEHOLDER</span>
+            <span className="type-mono text-[10px] text-lavender">VIDEO MESSAGE</span>
             <h2 className="mt-3 font-editorial text-3xl md:text-5xl leading-tight">
               A short film, meant just for you.
             </h2>
             <p className="mt-4 text-base text-text-secondary max-w-lg font-editorial">
-              A minute of Ameen talking directly to you — poster frame, captions, no autoplay.
+              Ameen talking directly to you. No autoplay — press play when ready.
             </p>
           </div>
           <div className="md:col-span-6 md:order-1">
-            <AssetPlaceholder
-              asset={{
-                id: "TEN-VIDEO-MESSAGE",
-                type: "video",
-                orientation: "landscape",
-                resolution: "1080p · ≤ 90 s",
-                aspect: "16:9",
-                purpose: "Personal anniversary video message",
-                filename: "ten-months-video-message.mp4",
-              }}
-              aspect="16/9"
-            />
+            <video
+              controls
+              preload="none"
+              playsInline
+              className="w-full rounded-2xl border border-white/10"
+              style={{ aspectRatio: "16/9" }}
+              data-testid="ten-video-message"
+            >
+              <source src="/assets/final/love-video.mp4" type="video/mp4" />
+            </video>
           </div>
         </div>
       </section>
@@ -252,7 +243,13 @@ export default function TenMonths() {
             </div>
           </div>
           <div className="md:col-span-6 relative">
-            <div className="apu-placeholder aspect-[16/10] flex items-center justify-center">
+            <div className="relative rounded-2xl overflow-hidden aspect-[16/10]">
+              <img
+                src="/assets/final/china-route.png"
+                alt="Hyderabad to China"
+                className="absolute inset-0 h-full w-full object-cover"
+              />
+              <div className="absolute inset-0 bg-archive/25" />
               <div className="relative w-full h-full flex items-center justify-center">
                 <svg width="80%" height="60%" viewBox="0 0 400 200" fill="none">
                   <motion.path
@@ -268,10 +265,10 @@ export default function TenMonths() {
                   />
                   <circle cx="40" cy="130" r="4" fill="#F3A7C4" />
                   <circle cx="360" cy="70" r="4" fill="#F3A7C4" />
-                  <text x="46" y="145" className="type-mono" fontSize="8" fill="#7F7885">
+                  <text x="46" y="145" className="type-mono" fontSize="8" fill="#F7F4F6">
                     HYDERABAD
                   </text>
-                  <text x="330" y="60" className="type-mono" fontSize="8" fill="#7F7885">
+                  <text x="330" y="60" className="type-mono" fontSize="8" fill="#F7F4F6">
                     CHINA
                   </text>
                 </svg>

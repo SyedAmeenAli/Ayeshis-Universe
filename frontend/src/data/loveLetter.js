@@ -52,7 +52,7 @@ export const FINAL_LETTER = {
     { month: 3, label: "The kiss", note: "Oct 11 — the geometry of us changed." },
     { month: 4, label: "The promise", note: "Dec 12 — I stopped leaving my feelings unnamed." },
     { month: 5, label: "Your day", note: "Feb 14 — the world's holiday, my private celebration." },
-    { month: 6, label: "Chaos", note: "Pungun. Hathim. Hum toh aise hi hai." },
+    { month: 6, label: "Chaos", note: "Pungun. Certified potty. Hum toh aise hi hai." },
     { month: 7, label: "Repair", note: "Our first real fight. We stayed." },
     { month: 8, label: "Ordinary days", note: "Long drives, calls, silence, replies." },
     { month: 9, label: "My day", note: "June 24 — my birthday, with you inside it." },
